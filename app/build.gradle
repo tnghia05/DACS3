@@ -1,0 +1,159 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+    id 'kotlin-kapt'
+    id 'com.google.dagger.hilt.android'
+    id 'com.google.gms.google-services'
+    id 'com.google.devtools.ksp'
+    id 'org.jetbrains.compose' version '1.5.11'
+
+}
+android {
+    namespace 'com.eritlab.jexmon'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "com.eritlab.jexmon"
+        minSdk 23
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        vectorDrawables {
+            useSupportLibrary true
+        }
+    }
+
+    def keystorePropertiesFile = rootProject.file("keystore.properties")
+    def keystoreProperties = new Properties()
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+
+    signingConfigs {
+        release {
+            storeFile file(keystoreProperties['RELEASE_STORE_FILE'])
+            storePassword keystoreProperties['RELEASE_STORE_PASSWORD']
+            keyAlias keystoreProperties['RELEASE_KEY_ALIAS']
+            keyPassword keystoreProperties['RELEASE_KEY_PASSWORD']
+        }
+    }
+
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release // 👈 thêm dòng này
+
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
+    buildFeatures {
+        compose true
+    }
+
+    composeOptions {
+        kotlinCompilerExtensionVersion '1.5.6'
+    }
+
+    packagingOptions {
+        resources {
+            excludes += '/META-INF/{AL2.0,LGPL2.1}'
+        }
+    }
+}
+
+dependencies {
+    // Firebase
+    implementation platform('com.google.firebase:firebase-bom:32.7.0')
+    implementation 'com.google.firebase:firebase-analytics'
+    implementation 'com.google.firebase:firebase-auth'
+    implementation 'com.google.firebase:firebase-auth-ktx'
+    implementation 'com.google.firebase:firebase-firestore-ktx'
+    implementation 'com.google.firebase:firebase-storage'
+    implementation('com.google.ai.client.generativeai:generativeai:0.1.1') {
+        exclude group: 'com.google.protobuf', module: 'protobuf-javalite'
+    }
+    implementation 'com.google.firebase:firebase-functions-ktx'
+    implementation 'com.google.firebase:firebase-annotations'
+    implementation 'com.google.firebase:firebase-appcheck-safetynet:16.1.0'
+
+    // Firebase Admin SDK (cho backend nếu build chung)
+
+    // Vertex AI và Gemini
+    implementation('com.google.ai.client.generativeai:generativeai:0.1.1') {
+        exclude group: 'com.google.protobuf', module: 'protobuf-javalite'
+    }
+
+    // Room
+    implementation 'androidx.room:room-runtime:2.6.1'
+    implementation 'androidx.room:room-ktx:2.6.1'
+    implementation 'androidx.room:room-paging:2.6.1'
+    implementation 'com.google.firebase:firebase-functions'
+    implementation 'androidx.compose.foundation:foundation-layout:1.4.1'
+    ksp 'androidx.room:room-compiler:2.6.1'
+
+    // Compose UI
+    def compose_ui_version = "1.5.4"
+    implementation "androidx.compose.compiler:compiler:$compose_ui_version"
+    implementation "androidx.compose.ui:ui:$compose_ui_version"
+    implementation "androidx.compose.ui:ui-tooling-preview:$compose_ui_version"
+    implementation 'androidx.compose.material:material:1.3.1'
+    implementation 'androidx.compose.material3:material3:1.1.2'
+    debugImplementation "androidx.compose.ui:ui-tooling:$compose_ui_version"
+    androidTestImplementation "androidx.compose.ui:ui-test-junit4:$compose_ui_version"
+    debugImplementation "androidx.compose.ui:ui-test-manifest:$compose_ui_version"
+
+    // AndroidX
+    implementation 'androidx.core:core-ktx:1.9.0'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.5.1'
+    implementation 'androidx.activity:activity-compose:1.6.1'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.5.1'
+    implementation 'androidx.constraintlayout:constraintlayout-compose:1.0.1'
+
+    // Hilt
+    implementation 'com.google.dagger:hilt-android:2.50'
+    kapt 'com.google.dagger:hilt-compiler:2.50'
+    implementation 'androidx.hilt:hilt-navigation-compose:1.0.0'
+    implementation 'com.google.firebase:firebase-appcheck-debug:17.0.1'
+
+    // Navigation
+    implementation "androidx.navigation:navigation-compose:2.5.3"
+
+    // Coil
+    implementation "io.coil-kt:coil-compose:2.2.2"
+
+    // Chat & Network
+    implementation 'com.squareup.okhttp3:okhttp:4.10.0'
+    implementation 'org.json:json:20210307'
+    implementation "com.squareup.retrofit2:retrofit:2.9.0"
+    implementation "com.squareup.retrofit2:converter-gson:2.9.0"
+    implementation 'com.google.firebase:firebase-appcheck-playintegrity'
+
+    // Pager
+    implementation "com.google.accompanist:accompanist-pager:0.28.0"
+
+    // Google Identity / Sign-in
+    implementation 'androidx.credentials:credentials:1.5.0-rc01'
+    implementation 'androidx.credentials:credentials-play-services-auth:1.3.0'
+    implementation 'com.google.android.libraries.identity.googleid:googleid:1.1.1'
+    implementation 'com.google.android.gms:play-services-analytics-impl:18.2.0'
+    implementation('com.google.ai.client.generativeai:generativeai:0.1.1')
+    implementation 'com.google.protobuf:protobuf-javalite:3.21.12'
+
+    // Test
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+
+}
+
