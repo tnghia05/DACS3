@@ -17,13 +17,38 @@ class BrandFilterViewModel : ViewModel() {
     val state: StateFlow<BrandFilterState> = _state
 
     fun filterBrandsByCategory(brands: List<BrandModel>, category: String) {
-        val filteredBrands = when (category) {
-            "men" -> brands.filter { it.categoryId == "men" }
-            "women" -> brands.filter { it.categoryId == "women" }
-            "shoes" -> brands.filter { it.categoryId == "shoes" }
-            "kids" -> brands.filter { it.categoryId == "kids" }
+        val normalizedCategory = category.lowercase().trim()
+        android.util.Log.d("BrandFilter", "Filtering for category: $normalizedCategory")
+        android.util.Log.d("BrandFilter", "Available brands: ${brands.map { "${it.name}:${it.categoryId}" }}")
+        
+        val filteredBrands = when (normalizedCategory) {
+            "Nam" -> brands.filter { 
+                val brandCategory = it.categoryId?.lowercase()?.trim()
+                android.util.Log.d("BrandFilter", "Checking brand ${it.name} with category $brandCategory")
+                brandCategory == "Nam"
+            }
+            "Nữ", "nu" -> brands.filter { 
+                val brandCategory = it.categoryId?.lowercase()?.trim()
+                android.util.Log.d("BrandFilter", "Checking brand ${it.name} with category $brandCategory")
+                brandCategory == "Nữ" || brandCategory == "nu"
+            }
+            "dép", "dep" -> brands.filter { 
+                val brandCategory = it.categoryId?.lowercase()?.trim()
+                android.util.Log.d("BrandFilter", "Checking brand ${it.name} with category $brandCategory")
+                brandCategory == "dép" || brandCategory == "dep"
+            }
+            "trẻ em", "tre em" -> brands.filter { 
+                val brandCategory = it.categoryId?.lowercase()?.trim()
+                android.util.Log.d("BrandFilter", "Checking brand ${it.name} with category $brandCategory")
+                brandCategory == "trẻ em" || brandCategory == "tre em"
+            }
+            "all" -> brands
             else -> brands
         }
+        
+        android.util.Log.d("BrandFilter", "Filtered brands count: ${filteredBrands.size}")
+        android.util.Log.d("BrandFilter", "Filtered brands: ${filteredBrands.map { it.name }}")
+
         _state.value = _state.value.copy(
             brands = brands,
             filteredBrands = filteredBrands,
