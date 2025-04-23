@@ -2,7 +2,8 @@ package com.eritlab.jexmon.presentation.screens.home_screen.component
 
 import android.annotation.SuppressLint
 import androidx.compose.foundation.ScrollState
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Scaffold
@@ -18,7 +19,6 @@ import com.eritlab.jexmon.presentation.dashboard_screen.component.AppBar
 import com.eritlab.jexmon.presentation.dashboard_screen.component.NavigationBar
 import com.eritlab.jexmon.presentation.graphs.detail_graph.DetailScreen
 import com.eritlab.jexmon.presentation.graphs.home_graph.HomeNavGraph
-import com.eritlab.jexmon.presentation.graphs.home_graph.ShopHomeScreen
 
 
 @SuppressLint("RememberReturnType")
@@ -41,15 +41,24 @@ fun HomeScreen(
             AppBar(
                 navController = navController,
                 isVisible = topBarVisibilityState.value,
-                searchCharSequence = {
-
+                searchCharSequence = { query ->
+                    // Điều hướng đến ProductsHome với query tìm kiếm
+                    navController.navigate("products?brand=all&sort=&query=$query")
                 },
                 onCartIconClick = {
                     navController.navigate(DetailScreen.CartScreen.route)
                 },
+
                 onNotificationIconClick = {
                     navController.navigate(DetailScreen.NotificationScreen.route)
-                })
+                },
+                onFilterApply = {  brand, sort  ->
+                    // Sử dụng coroutine scope để gọi hàm suspend
+                    navController.navigate("products?brand=$brand&sort=$sort") // Truyền dữ liệu vào route
+
+                }
+
+               )
         },
         bottomBar = {
             NavigationBar(navController = navController) { isVisible ->

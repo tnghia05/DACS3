@@ -4,14 +4,20 @@ import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import com.eritlab.jexmon.presentation.graphs.Graph
 import com.eritlab.jexmon.presentation.graphs.admin_graph.adminNavGraph
 import com.eritlab.jexmon.presentation.graphs.authNavGraph
+import com.eritlab.jexmon.presentation.graphs.detail_graph.detailNavGraph
 import com.eritlab.jexmon.presentation.screens.admin.AdminDashboard
 import com.eritlab.jexmon.presentation.screens.home_screen.component.HomeScreen
+import com.eritlab.jexmon.presentation.screens.product_detail_screen.ProductDetailViewModel
+import com.eritlab.jexmon.presentation.screens.product_detail_screen.component.ProductDetailScreen
 
 @Composable
 fun RootNavigationGraph(navHostController: NavHostController, context: Context) {
@@ -26,6 +32,7 @@ fun RootNavigationGraph(navHostController: NavHostController, context: Context) 
 
         // ✅ Đăng ký adminNavGraph đúng cách
         adminNavGraph(navHostController)
+        detailNavGraph(navHostController) // ✅ Thêm dòng này nè !!!
 
         composable(route = Graph.HOME) {
             Log.d("Navigation", "Loading HomeScreen")
@@ -36,6 +43,17 @@ fun RootNavigationGraph(navHostController: NavHostController, context: Context) 
             Log.d("Navigation", "Loading AdminDashboard")
             AdminDashboard(navHostController)
         }
+        composable(
+            route = "product_detail_screen/{productId}",
+            arguments = listOf(navArgument("productId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val productId = backStackEntry.arguments?.getString("productId") ?: ""
+            ProductDetailScreen(
+                productId = productId,
+                viewModel = hiltViewModel<ProductDetailViewModel>(),
+                popBack = { navHostController.popBackStack() }            )
+        }
+
     }
 
 

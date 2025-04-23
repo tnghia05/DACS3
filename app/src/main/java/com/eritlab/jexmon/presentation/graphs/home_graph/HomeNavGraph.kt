@@ -15,6 +15,7 @@ import com.eritlab.jexmon.presentation.screens.conversation_screen.component.Cha
 import com.eritlab.jexmon.presentation.screens.conversation_screen.component.ConversationScreen
 import com.eritlab.jexmon.presentation.screens.dashboard_screen.component.DashboardScreen
 import com.eritlab.jexmon.presentation.screens.favourite_screen.component.FavouriteScreen
+import com.eritlab.jexmon.presentation.screens.products.ProductsHome
 import com.eritlab.jexmon.presentation.screens.profile_screen.component.ProfileScreen
 
 @Composable
@@ -56,7 +57,7 @@ fun HomeNavGraph(navHostController: NavHostController) {
                 navController = navHostController
             )
         }
-            
+
         composable(ShopHomeScreen.ProfileScreen.route) {
             ProfileScreen(
                 navController = navHostController,
@@ -72,6 +73,22 @@ fun HomeNavGraph(navHostController: NavHostController) {
                 chatRepository = ChatRepository()
             )
         }
+
+        composable("products?brand={brand}&sort={sort}") { backStackEntry ->
+            val brand = backStackEntry.arguments?.getString("brand") ?: "all" // Lấy giá trị brand, mặc định là "all"
+            val sort = backStackEntry.arguments?.getString("sort") ?: "" // Lấy giá trị sort, mặc định là ""
+
+            ProductsHome(
+                brandId = brand,
+                sortOption = sort,
+                navController = navHostController,
+                onItemClick = { productId ->
+                    navHostController.navigate("${DetailScreen.ProductDetailScreen.route}/$productId")
+                }
+            )
+        }
+
+
         composable(
             route = "brands_home_screen/{categoryId}",
             arguments = listOf(navArgument("categoryId") {
@@ -79,10 +96,29 @@ fun HomeNavGraph(navHostController: NavHostController) {
             })
         ) { backStackEntry ->
             val category = backStackEntry.arguments?.getString("category") ?: "all"
-            BrandsHome(category = category, onItemClick = { selectedCategory ->
+            BrandsHome(category = category , navController = navController, onItemClick = { selectedCategory ->
                 navController.navigate("brands_home_screen/$selectedCategory")
             })
         }
+        // su dung route de tuong ung voi san pham
+        composable(
+            route = "products_home_screen/{brandId}",
+            arguments = listOf(navArgument("brandId") {
+                defaultValue = "all" // nếu không truyền thì mặc định là "all"
+            })
+
+        ) { backStackEntry ->
+            val brandId = backStackEntry.arguments?.getString("brandId") ?: "all"
+            ProductsHome(
+                brandId = brandId,
+                navController = navHostController, // Thay thế navController = rememberNavController()
+                onItemClick = { productId ->
+                    navHostController.navigate("${DetailScreen.ProductDetailScreen.route}/$productId") // Sử dụng navHostController
+                },
+                sortOption = ""
+            )
+        }
+
 
 
         composable(
@@ -96,8 +132,8 @@ fun HomeNavGraph(navHostController: NavHostController) {
                 chatRepository = ChatRepository()
             )
         }
-         
-        
+
+
 
 
     }

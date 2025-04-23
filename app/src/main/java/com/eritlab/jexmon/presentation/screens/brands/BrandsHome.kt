@@ -51,8 +51,6 @@ import androidx.navigation.compose.rememberNavController
 import coil.compose.rememberAsyncImagePainter
 import com.eritlab.jexmon.R
 import com.eritlab.jexmon.domain.model.BrandModel
-import com.eritlab.jexmon.presentation.dashboard_screen.component.AppBar
-import com.eritlab.jexmon.presentation.graphs.detail_graph.DetailScreen
 import com.eritlab.jexmon.presentation.screens.dashboard_screen.DashboardViewModel
 import com.eritlab.jexmon.presentation.ui.theme.PrimaryLightColor
 import com.google.firebase.firestore.FirebaseFirestore
@@ -60,7 +58,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 @Composable
 
 fun BrandsHome(
-    category: String, // ← thêm dòng này
+    category: String,
     navController: NavHostController = rememberNavController(),
 
     popularProductState: LazyListState = rememberLazyListState(),
@@ -101,18 +99,6 @@ fun BrandsHome(
     val topBarVisibilityState = remember {
         mutableStateOf(true)
     }
-    AppBar(
-        navController = navController,
-        isVisible = topBarVisibilityState.value,
-        searchCharSequence = {
-
-        },
-        onCartIconClick = {
-            navController.navigate(DetailScreen.CartScreen.route)
-        },
-        onNotificationIconClick = {
-            navController.navigate(DetailScreen.NotificationScreen.route)
-        })
 
     Column(
         modifier = Modifier
@@ -213,7 +199,13 @@ fun BrandsHome(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             items(brandState.filteredBrands) { brand ->
-                BrandItem(brand = brand)
+                BrandItem(
+                    brand = brand,
+                    onItemClick = { brandId ->
+                        // Điều hướng đến màn hình danh sách sản phẩm với brandId
+                        navController.navigate("products_home_screen/$brandId")
+                    }   
+                )
             }
         }
     }
@@ -231,16 +223,15 @@ fun BrandsHome(
 @Composable
 fun BrandItem(
     brand: BrandModel,
-    onItemClick: (String) -> Unit = {}
+    onItemClick: (String) -> Unit
 ) {
-
     Column(
         modifier = Modifier
             .padding(bottom = 16.dp, start = 8.dp, end = 8.dp)
             .clickable {
-                brand.id?.let {
-                    Log.d("BrandItem", "Clicked brand: $it")
-                    onItemClick(it)
+                brand.id?.let { brandId ->
+                    Log.d("BrandItem", "Clicked brand: $brandId")
+                    onItemClick(brandId)
                 } ?: Log.e("BrandItem", "Brand ID is null")
             }
     ) {

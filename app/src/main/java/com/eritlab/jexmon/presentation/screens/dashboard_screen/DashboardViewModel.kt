@@ -1,5 +1,6 @@
 package com.eritlab.jexmon.presentation.screens.dashboard_screen
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import com.eritlab.jexmon.domain.model.ProductModel
 import com.eritlab.jexmon.domain.model.ProductStock
@@ -27,6 +28,8 @@ class DashboardViewModel : ViewModel() {
 
                 result.documents.forEach { document ->
                     val product = document.toObject(ProductModel::class.java)?.copy(id = document.id)
+                    Log.d("Product", "Product ID: ${product?.id}, Name: ${product?.name}")
+
 
                     product?.let { prod ->
                         firestore.collection("products")
