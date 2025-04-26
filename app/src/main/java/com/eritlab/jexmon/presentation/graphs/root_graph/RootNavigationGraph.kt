@@ -13,6 +13,7 @@ import androidx.navigation.navArgument
 import com.eritlab.jexmon.presentation.graphs.Graph
 import com.eritlab.jexmon.presentation.graphs.admin_graph.adminNavGraph
 import com.eritlab.jexmon.presentation.graphs.authNavGraph
+import com.eritlab.jexmon.presentation.graphs.detail_graph.DetailScreen
 import com.eritlab.jexmon.presentation.graphs.detail_graph.detailNavGraph
 import com.eritlab.jexmon.presentation.screens.admin.AdminDashboard
 import com.eritlab.jexmon.presentation.screens.home_screen.component.HomeScreen
@@ -51,7 +52,12 @@ fun RootNavigationGraph(navHostController: NavHostController, context: Context) 
             ProductDetailScreen(
                 productId = productId,
                 viewModel = hiltViewModel<ProductDetailViewModel>(),
-                popBack = { navHostController.popBackStack() }            )
+
+
+                popBack = { navHostController.popBackStack() },
+                onNavigateToCart = { navHostController.navigate(DetailScreen.CartScreen.route) }
+
+            )
         }
 
     }

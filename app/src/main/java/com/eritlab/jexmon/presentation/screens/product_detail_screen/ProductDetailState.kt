@@ -5,5 +5,8 @@ import com.eritlab.jexmon.domain.model.ProductModel
 data class ProductDetailState(
     val isLoading: Boolean = false,
     val productDetail: ProductModel? = null,
-    val errorMessage: String = ""
+    val errorMessage: String = "",
+    val isAddingToCart: Boolean = false,
+    val addToCartSuccess: Boolean = false,
+    val addToCartError: String = ""
 )

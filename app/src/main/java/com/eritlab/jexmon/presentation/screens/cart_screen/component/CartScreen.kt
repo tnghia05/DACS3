@@ -1,63 +1,78 @@
 package com.eritlab.jexmon.presentation.screens.cart_screen.component
 
 import android.util.Log
-import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Icon
+import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
-import androidx.compose.material.icons.materialIcon
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.TextField
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.pointerInteropFilter
-import androidx.compose.ui.modifier.modifierLocalConsumer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.constraintlayout.compose.ConstraintLayout
-import com.eritlab.jexmon.presentation.common.component.DefaultBackArrow
-import com.eritlab.jexmon.presentation.ui.theme.TextColor
+import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.rememberAsyncImagePainter
 import com.eritlab.jexmon.R
 import com.eritlab.jexmon.presentation.common.CustomDefaultBtn
+import com.eritlab.jexmon.presentation.common.component.DefaultBackArrow
+import com.eritlab.jexmon.presentation.screens.cart_screen.CartViewModel
 import com.eritlab.jexmon.presentation.ui.theme.PrimaryColor
 import com.eritlab.jexmon.presentation.ui.theme.PrimaryLightColor
+import com.eritlab.jexmon.presentation.ui.theme.TextColor
 
 
-@Preview(showBackground = true)
 @Composable
-fun CartScreen() {
+fun CartScreen(
+    viewModel: CartViewModel = hiltViewModel(),
+    onBackClick: () -> Unit
+) {
     var itemDrag by remember { mutableStateOf(0f) }
+    val cartItems by viewModel.cartItems
+    val totalAmount by viewModel.totalAmount
 
-
-    ConstraintLayout(modifier = Modifier.fillMaxSize(1f)) {
-        val (topBar, product, checkout) = createRefs()
+    Column(modifier = Modifier.fillMaxSize()) {
 
         Row(
             modifier = Modifier
                 .padding(top = 15.dp, start = 15.dp, end = 15.dp)
-                .fillMaxWidth()
-                .constrainAs(topBar) {
-                    top.linkTo(parent.top)
-                    start.linkTo(parent.start)
-                    end.linkTo(parent.end)
-                },
+                .fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(modifier = Modifier.weight(0.5f)) {
                 DefaultBackArrow {
+                    onBackClick()
 
                 }
             }
@@ -72,7 +87,7 @@ fun CartScreen() {
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "4 items",
+                        text = "${cartItems.size} items",
                         textAlign = TextAlign.Center,
                         color = MaterialTheme.colors.TextColor,
                     )
@@ -82,209 +97,158 @@ fun CartScreen() {
 
         }
 
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
-                .constrainAs(product) {
-                    top.linkTo(topBar.bottom)
-                    start.linkTo(parent.start)
-                    end.linkTo(parent.end)
-                }
-                .wrapContentHeight()
+                .height(630.dp)
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(15.dp)
-                    .pointerInput(Unit) {
-                        detectVerticalDragGestures { change, dragAmount ->
-                            itemDrag = dragAmount
-                        }
-                    },
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.ps4_console_white_1),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(80.dp)
-                        .background(Color(0x8DB3B0B0), shape = RoundedCornerShape(10.dp))
-                        .padding(10.dp)
-                        .clip(RoundedCornerShape(10.dp))
+            Log.d("CartScreen", "Cart items: ${cartItems.size}")
+            fun convertToHex(color: String): String {
+                val colorMap = mapOf(
+                    "red" to "#FF0000",
+                    "blue" to "#0000FF",
+                    "green" to "#008000",
+                    "yellow" to "#FFFF00",
+                    "black" to "#000000",
+                    "white" to "#FFFFFF",
+                    "gray" to "#808080",
+                    "purple" to "#800080",
+                    "orange" to "#FFA500",
+                    "pink" to "#FFC0CB"
                 )
-                Column() {
-                    Text(
-                        text = "Wireless Controller for PS4™",
-                        fontWeight = FontWeight(700),
-                        fontSize = 16.sp,
 
-                        )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row() {
+                return colorMap[color.lowercase()] ?: color // Nếu không tìm thấy, giả định nó là mã hex
+            }
+            fun convertToColorName(hex: String): String {
+                val colorMap = mapOf(
+                    "#FF0000" to "Red",
+                    "#0000FF" to "Blue",
+                    "#008000" to "Green",
+                    "#FFFF00" to "Yellow",
+                    "#000000" to "Black",
+                    "#FFFFFF" to "White",
+                    "#808080" to "Gray",
+                    "#800080" to "Purple",
+                    "#FFA500" to "Orange",
+                    "#FFC0CB" to "Pink"
+                )
+
+                return colorMap[hex.uppercase()] ?: hex // Nếu không tìm thấy, giữ nguyên mã hex
+            }
+
+            items(cartItems) { cartItem ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(15.dp)
+                        .pointerInput(Unit) {
+                            detectVerticalDragGestures { change, dragAmount ->
+                                itemDrag = dragAmount
+                            }
+                        },
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Log.d("CartScreen", "Cart item: ${cartItem.name}")
+                    Log.d("CartScreen", "Item img: ${cartItem.imageUrl}")
+                    Image(
+                        painter = rememberAsyncImagePainter(cartItem.imageUrl),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(80.dp)
+                            .background(Color(0x8DB3B0B0), shape = RoundedCornerShape(10.dp))
+                            .padding(10.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                    )
+                    Column {
                         Text(
-                            text = "$79.99",
-                            color = MaterialTheme.colors.PrimaryColor,
-                            fontWeight = FontWeight.Bold
+                            text = cartItem.name,
+
+                            fontWeight = FontWeight(700),
+                            fontSize = 16.sp,
                         )
-                        Text(text = "  x1", color = MaterialTheme.colors.TextColor)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        val colorName = convertToColorName(cartItem.color)
+                        Row {
+                            Text(
+                                text = "Size: ${cartItem.size} " ,
+                                fontSize = 16.sp,
+
+                                )
+                            Text(
+                            text = "Color: $colorName",
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row {
+                            val discountedPrice = cartItem.price
+                            Text(
+                                text = "$${String.format("%.2f", discountedPrice)}",
+                                color = MaterialTheme.colors.PrimaryColor,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "  x${cartItem.quantity}",
+                                color = MaterialTheme.colors.TextColor
+                            )
+                        }
+                    }
+                    
+                    // Nút điều chỉnh số lượng
+                    Row(
+                        modifier = Modifier.padding(start = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(
+                            onClick = { viewModel.updateQuantity(cartItem.id!!, cartItem.quantity - 1) }
+                        ) {
+                            Text("-", fontSize = 20.sp)
+                        }
+                        
+                        Text(
+                            text = cartItem.quantity.toString(),
+                            modifier = Modifier.padding(horizontal = 8.dp)
+                        )
+                        
+                        IconButton(
+                            onClick = { viewModel.updateQuantity(cartItem.id!!, cartItem.quantity + 1) }
+                        ) {
+                            Text("+", fontSize = 20.sp)
+                        }
+                    IconButton(
+                            onClick = { viewModel.removeItem(cartItem) }
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.trash),
+                                contentDescription = null,
+                                tint = MaterialTheme.colors.PrimaryColor
+                            )
+                        }
                     }
                 }
             }
-
-
-
-
-
-
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(15.dp)
-                    .pointerInput(Unit) {
-                        detectVerticalDragGestures { change, dragAmount ->
-                            itemDrag = dragAmount
-                        }
-                    },
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.shoes2),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(80.dp)
-                        .background(Color(0x8DB3B0B0), shape = RoundedCornerShape(10.dp))
-                        .padding(10.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                )
-                Column() {
-                    Text(
-                        text = "High Quality Sport Shoes",
-                        fontWeight = FontWeight(700),
-                        fontSize = 16.sp,
-
-                        )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row() {
-                        Text(
-                            text = "$100.25",
-                            color = MaterialTheme.colors.PrimaryColor,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(text = "  x1", color = MaterialTheme.colors.TextColor)
-                    }
-                }
-            }
-
-
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(15.dp)
-                    .pointerInput(Unit) {
-                        detectVerticalDragGestures { change, dragAmount ->
-                            itemDrag = dragAmount
-                        }
-                    },
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.image_popular_product_2),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(80.dp)
-                        .background(Color(0x8DB3B0B0), shape = RoundedCornerShape(10.dp))
-                        .padding(10.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                )
-                Column() {
-                    Text(
-                        text = "Nike Sport White - Man Pant",
-                        fontWeight = FontWeight(700),
-                        fontSize = 16.sp,
-
-                        )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row() {
-                        Text(
-                            text = "$49.99",
-                            color = MaterialTheme.colors.PrimaryColor,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(text = "  x1", color = MaterialTheme.colors.TextColor)
-                    }
-                }
-            }
-
-
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(15.dp)
-                    .pointerInput(Unit) {
-                        detectVerticalDragGestures { change, dragAmount ->
-                            itemDrag = dragAmount
-                        }
-                    },
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.glove),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(80.dp)
-                        .background(Color(0x8DB3B0B0), shape = RoundedCornerShape(10.dp))
-                        .padding(10.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                )
-                Column() {
-                    Text(
-                        text = "Gloves XC Omega - Polygon",
-                        fontWeight = FontWeight(700),
-                        fontSize = 16.sp,
-
-                        )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row() {
-                        Text(
-                            text = "$36.55",
-                            color = MaterialTheme.colors.PrimaryColor,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(text = "  x1", color = MaterialTheme.colors.TextColor)
-                    }
-                }
-            }
-
-
         }
 
 
 
 
+        var isVoucherVisible by remember { mutableStateOf(false) }
+        var voucherCode by remember { mutableStateOf("") }
+
         Column(
             modifier = Modifier
-                .wrapContentHeight()
-                .constrainAs(checkout) {
-                    bottom.linkTo(parent.bottom)
-                    start.linkTo(parent.start)
-                    end.linkTo(parent.end)
-                }
+                .fillMaxWidth()
                 .background(
                     color = MaterialTheme.colors.PrimaryLightColor,
                     shape = RoundedCornerShape(topStart = 15.dp, topEnd = 15.dp)
                 )
                 .clip(RoundedCornerShape(topStart = 15.dp, topEnd = 15.dp))
-                .padding(20.dp)
+                .padding(15.dp)
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { isVoucherVisible = !isVoucherVisible }, // 👈 Toggle
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -298,18 +262,65 @@ fun CartScreen() {
                         .padding(10.dp)
                         .clip(RoundedCornerShape(15.dp))
                 )
+
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
-                    Text("Add vouture Code")
+                    Text("Add voucher code", style = MaterialTheme.typography.body1)
                     Icon(
                         painter = painterResource(id = R.drawable.arrow_right),
                         contentDescription = null,
                     )
                 }
             }
-            //btn
+
+            // 👇 Hiển thị trượt TextField
+            AnimatedVisibility(visible = isVoucherVisible) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    TextField(
+                        value = voucherCode,
+                        onValueChange = { voucherCode = it },
+                        placeholder = { Text("Enter voucher code") },
+                        modifier = Modifier
+                            .weight(1f)
+                            .background(Color.White, RoundedCornerShape(10.dp))
+                            .clip(RoundedCornerShape(10.dp)),
+                        singleLine = true
+                    )
+
+                    Button(
+                        onClick = {
+                            viewModel.checkVoucher(
+                                voucherCode,
+                                onSuccess = {
+                                    Log.d("CartViewModel", "Thanh Cong")
+                                    isVoucherVisible = false
+                                    voucherCode = ""
+                                },
+                                onError = { error ->
+                                    Log.d("CartViewModel", "Lỗi: $error")
+
+                                    // TODO: Hiển thị thông báo lỗi
+                                }
+                            )
+                        },
+                        shape = RoundedCornerShape(10.dp),
+                        enabled = voucherCode.isNotEmpty()
+                    ) {
+                        Text("Sử dụng")
+                    }
+                }
+            }
+
+
+        //btn
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -317,12 +328,43 @@ fun CartScreen() {
             ) {
                 Column() {
                     Text(text = "Total")
+                    val discountAmountValue by viewModel.discountAmount
+                    val appliedVoucherValue by viewModel.appliedVoucher
+                    
+                    if (discountAmountValue > 0) {
+                        Text(
+                            text = "Giảm giá: ${String.format("%.2f", discountAmountValue)}%",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colors.PrimaryColor
+                        )
+                    }
+                    
                     Text(
-                        text = "$266.78",
+                        text = "$${String.format("%.2f", totalAmount)}",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colors.PrimaryColor
                     )
+                    
+                    if (appliedVoucherValue != null) {
+                        Row(
+                            modifier = Modifier.clickable { viewModel.removeVoucher() },
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = appliedVoucherValue!!,
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colors.PrimaryColor
+                            )
+                            Icon(
+                                painter = painterResource(id = R.drawable.trash),
+                                contentDescription = "Remove voucher",
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colors.PrimaryColor
+                            )
+                        }
+                    }
 
                 }
                 Box(

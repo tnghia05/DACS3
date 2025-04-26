@@ -23,7 +23,10 @@ fun NavGraphBuilder.detailNavGraph(navController: NavHostController) {
     ) {
         composable(DetailScreen.CartScreen.route) {
             Log.d("Navigation", "Navigated to CartScreen")
-            CartScreen()
+            CartScreen(
+
+                onBackClick = { navController.popBackStack() },
+            )
         }
 
         composable(DetailScreen.NotificationScreen.route) {
@@ -40,7 +43,8 @@ fun NavGraphBuilder.detailNavGraph(navController: NavHostController) {
             ProductDetailScreen(
                 productId = productId,
                 viewModel = hiltViewModel<ProductDetailViewModel>(),
-                popBack = { navController.popBackStack() }
+                popBack = { navController.popBackStack() },
+                onNavigateToCart = { navController.navigate(DetailScreen.CartScreen.route) }
             )
         }
 

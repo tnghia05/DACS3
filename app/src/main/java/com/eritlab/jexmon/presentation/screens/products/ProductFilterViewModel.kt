@@ -93,7 +93,7 @@ class ProductFilterViewModel : ViewModel() {
             
             try {
                 // Chuyển query về chữ thường để tìm kiếm
-                val lowercaseQuery = query.trim()
+                val lowercaseQuery =  query.lowercase()
                 Log.d("ProductSearch", "Query sau khi xử lý: $lowercaseQuery")
 
                 // Thực hiện tìm kiếm trên Firestore
