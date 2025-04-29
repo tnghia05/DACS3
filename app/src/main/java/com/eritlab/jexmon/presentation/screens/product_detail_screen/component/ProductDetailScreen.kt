@@ -742,7 +742,9 @@ fun BottomSheetContent(
                     size = selectedSize,
                     color = selectedColor ?: "",
                     quantity = quantity,
-                    imageUrl = product.images.firstOrNull() ?: ""
+                    imageUrl = product.images.firstOrNull() ?: "",
+                    discount = product.discount
+
                 )
 
                 coroutineScope.launch {

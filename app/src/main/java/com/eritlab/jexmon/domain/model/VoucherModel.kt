@@ -1,10 +1,13 @@
 package com.eritlab.jexmon.domain.model
 
+import java.util.Date
+
 data class VoucherModel(
-    val code: String? = null,
-    val value: String? = null,
-    val valid_from: Long? = null,
-    val created_at: Long? = null,
-    val status: String? = null,
-    val customerId : String
-)
+    val code: String = "",
+    val discount: Double = 0.0,
+    val expiryDate: Date? = null,
+    val quantity: Int = 0,
+    val detail: String = "",
+    val chon: Boolean = false // Trạng thái cho voucher được chọn
+
+    )

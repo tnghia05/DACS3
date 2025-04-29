@@ -1,5 +1,6 @@
 package com.eritlab.jexmon.presentation.screens.cart_screen
 
+import android.util.Log
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
@@ -49,8 +50,31 @@ class CartViewModel @Inject constructor() : ViewModel() {
     }
 
     private fun calculateTotal() {
-        val subtotal = _cartItems.value.sumOf { it.price * it.quantity }
+
+        val total1 = _cartItems.value.sumOf { (1 - it.discount.toFloat() / 100)*it.price  }
+        val subtotal = _cartItems.value.sumOf { total1 * it.quantity }
         _totalAmount.value = subtotal - _discountAmount.value*subtotal/100
+    }
+    fun resetAllVouchersSelection(onSuccess: () -> Unit, onError: (String) -> Unit) {
+        db.collection("vouchers")
+            .whereEqualTo("Chon", true) // Chỉ lấy những voucher đang được chọn
+            .get()
+            .addOnSuccessListener { result ->
+                val batch = db.batch()
+                for (document in result.documents) {
+                    batch.update(document.reference, "Chon", false)
+                }
+                batch.commit()
+                    .addOnSuccessListener {
+                        onSuccess()
+                    }
+                    .addOnFailureListener { e ->
+                        onError("Không thể reset voucher: ${e.message}")
+                    }
+            }
+            .addOnFailureListener { e ->
+                onError("Lỗi khi lấy vouchers: ${e.message}")
+            }
     }
 
     fun checkVoucher(code: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
@@ -73,7 +97,12 @@ class CartViewModel @Inject constructor() : ViewModel() {
                         }
                         else -> {
                             // Cập nhật số lượng voucher
-                            document.reference.update("quantity", quantity - 1)
+                            document.reference.update(
+                                mapOf(
+                                    "quantity" to quantity - 1,
+                                    "Chon" to true
+                                )
+                            )
                                 .addOnSuccessListener {
                                     _discountAmount.value = discount
                                     _appliedVoucher.value = code
@@ -106,14 +135,15 @@ class CartViewModel @Inject constructor() : ViewModel() {
     }
     fun removeItem(cartItem: CartItem) {
         val userId = auth.currentUser?.uid ?: return
-
+        Log.d("CartViewModel", "Removed item: ${cartItem.id}")
         db.collection("carts")
-            .document(cartItem.productId)
+            .document(cartItem.id)
             .delete()
             .addOnSuccessListener {
                 loadCartItems()
             }
             .addOnFailureListener {
+
                 // Handle failure
             }
     }

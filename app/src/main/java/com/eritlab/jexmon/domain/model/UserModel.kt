@@ -7,8 +7,6 @@ data class UserModel(
     val email: String = "",
     val fullName: String = "",
     val phoneNumber: String = "",
-    val address: String = "",
-    val profileImageUrl: String = "" ,
     val createdAt: Timestamp = Timestamp.now()
 
 )

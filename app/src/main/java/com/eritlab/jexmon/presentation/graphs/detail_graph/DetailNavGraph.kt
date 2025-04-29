@@ -9,8 +9,12 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import androidx.navigation.navigation
 import com.eritlab.jexmon.common.Constrains
+import com.eritlab.jexmon.domain.model.CartItem
 import com.eritlab.jexmon.presentation.graphs.Graph
 import com.eritlab.jexmon.presentation.screens.cart_screen.component.CartScreen
+import com.eritlab.jexmon.presentation.screens.checkout_screen.CheckoutScreen
+import com.eritlab.jexmon.presentation.screens.checkout_screen.CheckoutViewModel
+import com.eritlab.jexmon.presentation.screens.checkout_screen.VoucherScreen
 import com.eritlab.jexmon.presentation.screens.notification_screen.component.NotificationScreen
 import com.eritlab.jexmon.presentation.screens.product_detail_screen.ProductDetailViewModel
 import com.eritlab.jexmon.presentation.screens.product_detail_screen.component.ProductDetailScreen
@@ -24,10 +28,36 @@ fun NavGraphBuilder.detailNavGraph(navController: NavHostController) {
         composable(DetailScreen.CartScreen.route) {
             Log.d("Navigation", "Navigated to CartScreen")
             CartScreen(
-
                 onBackClick = { navController.popBackStack() },
+                onNavigateToCheckout = { cartItems -> 
+                    navController.currentBackStackEntry?.savedStateHandle?.set("cartItems", cartItems)
+                    navController.navigate(DetailScreen.CheckoutScreen.route)
+                }
             )
         }
+
+        composable(DetailScreen.CheckoutScreen.route) {
+            Log.d("Navigation", "Navigated to CheckoutScreen")
+            val cartItems = navController.previousBackStackEntry?.savedStateHandle?.get<List<CartItem>>("cartItems") ?: emptyList()
+            Log.d("Navigation", "Navigated to CheckoutScreen with cartItems: $cartItems")
+            CheckoutScreen(
+                navController = navController,
+                cartItems = cartItems,
+                onBackClick = { navController.popBackStack() },
+
+                )
+        }
+        composable("voucher_screen") { backStackEntry ->
+            // Lấy voucherCode từ argument
+            val voucherCode = backStackEntry.arguments?.getString("voucherCode")
+
+            // Truyền voucherCode vào VoucherScreen
+            VoucherScreen(navController = navController,
+                viewModel = hiltViewModel<CheckoutViewModel>()
+                , onBackClick = { navController.popBackStack() }
+            )
+        }
+
 
         composable(DetailScreen.NotificationScreen.route) {
             Log.d("Navigation", "Navigated to NotificationScreen, route: ${DetailScreen.NotificationScreen.route}")
@@ -46,7 +76,7 @@ fun NavGraphBuilder.detailNavGraph(navController: NavHostController) {
                 popBack = { navController.popBackStack() },
                 onNavigateToCart = { navController.navigate(DetailScreen.CartScreen.route) }
             )
-        }
+        }   
 
 
 

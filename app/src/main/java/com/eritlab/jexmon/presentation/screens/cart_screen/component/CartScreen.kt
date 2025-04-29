@@ -27,6 +27,7 @@ import androidx.compose.material.Text
 import androidx.compose.material3.Button
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,8 +56,21 @@ import com.eritlab.jexmon.presentation.ui.theme.TextColor
 @Composable
 fun CartScreen(
     viewModel: CartViewModel = hiltViewModel(),
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    onNavigateToCheckout: (Any?) -> Unit
 ) {
+    LaunchedEffect(Unit) {
+        viewModel.resetAllVouchersSelection(
+            onSuccess = { /* reset thành công, làm gì đó nếu cần */
+            Log.d("CartScreen", "Reset vouchers thành công")
+            },
+            onError = { errorMessage ->
+                // Toast hoặc Log error
+                Log.d("CartScreen", "Lỗi khi reset vouchers: $errorMessage")
+            }
+        )
+    }
+
     var itemDrag by remember { mutableStateOf(0f) }
     val cartItems by viewModel.cartItems
     val totalAmount by viewModel.totalAmount
@@ -181,7 +195,7 @@ fun CartScreen(
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                         Row {
-                            val discountedPrice = cartItem.price
+                            val discountedPrice = cartItem.price * (1 - cartItem.discount.toFloat() / 100)
                             Text(
                                 text = "$${String.format("%.2f", discountedPrice)}",
                                 color = MaterialTheme.colors.PrimaryColor,
@@ -216,7 +230,10 @@ fun CartScreen(
                             Text("+", fontSize = 20.sp)
                         }
                     IconButton(
-                            onClick = { viewModel.removeItem(cartItem) }
+                            onClick = {                             Log.d("CartScreen", "Removed item: ${cartItem.name}")
+
+                                viewModel.removeItem(cartItem)
+                            }
                         ) {
                             Icon(
                                 painter = painterResource(id = R.drawable.trash),
@@ -371,8 +388,10 @@ fun CartScreen(
                     modifier = Modifier
                         .width(150.dp)
                 ) {
-                    CustomDefaultBtn(shapeSize = 15f, btnText = "Check Out") {
-
+                    CustomDefaultBtn(shapeSize = 15f, btnText = "Mua Hàng") {
+                        onNavigateToCheckout(
+                            cartItems
+                        )
                     }
                 }
 
