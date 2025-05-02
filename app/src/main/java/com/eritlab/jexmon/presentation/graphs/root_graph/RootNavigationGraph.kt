@@ -16,12 +16,15 @@ import com.eritlab.jexmon.presentation.graphs.authNavGraph
 import com.eritlab.jexmon.presentation.graphs.detail_graph.DetailScreen
 import com.eritlab.jexmon.presentation.graphs.detail_graph.detailNavGraph
 import com.eritlab.jexmon.presentation.screens.admin.AdminDashboard
+import com.eritlab.jexmon.presentation.screens.checkout_screen.CheckoutViewModel
 import com.eritlab.jexmon.presentation.screens.home_screen.component.HomeScreen
 import com.eritlab.jexmon.presentation.screens.product_detail_screen.ProductDetailViewModel
 import com.eritlab.jexmon.presentation.screens.product_detail_screen.component.ProductDetailScreen
 
 @Composable
-fun RootNavigationGraph(navHostController: NavHostController, context: Context) {
+fun RootNavigationGraph(navHostController: NavHostController, context: Context,
+                        checkoutViewModel: CheckoutViewModel
+) {
     Log.d("Navigation", "Setting up RootNavigationGraph")
 
     NavHost(

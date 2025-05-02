@@ -18,6 +18,7 @@ import com.eritlab.jexmon.presentation.screens.checkout_screen.VoucherScreen
 import com.eritlab.jexmon.presentation.screens.notification_screen.component.NotificationScreen
 import com.eritlab.jexmon.presentation.screens.product_detail_screen.ProductDetailViewModel
 import com.eritlab.jexmon.presentation.screens.product_detail_screen.component.ProductDetailScreen
+import com.eritlab.jexmon.presentation.screens.sign_success_screen.PaymentSuccess
 
 
 fun NavGraphBuilder.detailNavGraph(navController: NavHostController) {
@@ -62,6 +63,13 @@ fun NavGraphBuilder.detailNavGraph(navController: NavHostController) {
         composable(DetailScreen.NotificationScreen.route) {
             Log.d("Navigation", "Navigated to NotificationScreen, route: ${DetailScreen.NotificationScreen.route}")
             NotificationScreen()
+        }
+        composable(DetailScreen.PaymentSuccessScreen.route){
+            Log.d("Navigation", "Navigated to PaymentSuccessScreen, route: ${DetailScreen.PaymentSuccessScreen.route}")
+            // Handle payment success screen here
+            PaymentSuccess(
+                navController = navController
+            )
         }
 
         composable(

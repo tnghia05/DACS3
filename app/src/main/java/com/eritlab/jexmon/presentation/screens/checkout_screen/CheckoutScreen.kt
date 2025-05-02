@@ -1,5 +1,6 @@
 package com.eritlab.jexmon.presentation.screens.checkout_screen
 
+import android.app.Activity
 import android.util.Log
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
@@ -38,6 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -46,10 +48,13 @@ import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.eritlab.jexmon.domain.model.CartItem
 import com.eritlab.jexmon.presentation.common.component.DefaultBackArrow
+import com.eritlab.jexmon.presentation.graphs.detail_graph.DetailScreen
 import com.eritlab.jexmon.presentation.ui.theme.TextColor
+import vn.zalopay.sdk.ZaloPayError
+import vn.zalopay.sdk.ZaloPaySDK
+import vn.zalopay.sdk.listeners.PayOrderListener
 import java.text.NumberFormat
 import java.util.Locale
-
 
 @Composable
 fun CheckoutScreen(
@@ -58,6 +63,8 @@ fun CheckoutScreen(
     onBackClick: () -> Unit,
     viewModel: CheckoutViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
+    var zpTransToken by remember { mutableStateOf("") } // Token cho ZaloPay
     LaunchedEffect(Unit) {
         viewModel.fetchCartItems()
         viewModel.fetchShippingAddress() // <<< GỌI THÊM DÒNG NÀY
@@ -65,16 +72,20 @@ fun CheckoutScreen(
 
 
     }
-    var selectedPaymentMethod by remember { mutableStateOf("BIDV") }
+
+    var selectedPaymentMethod by remember { mutableStateOf("COD") }
 
     val cartItems by viewModel.cartItems // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< thêm dòng này nè
     val shippingAddress by viewModel.shippingAddress
     val paymentMethod by viewModel.paymentMethod
+
     val subtotal by viewModel.subtotal
     val shippingFee by viewModel.shippingFee
     val discount by viewModel.discount
     val total by viewModel.total
     val isLoading by viewModel.isLoading
+    val zaloPayToken by viewModel.zaloPayToken // Quan sát ZaloPay token từ ViewModel
+
     val selectedVoucher by viewModel.selectedVoucher.collectAsState()
     val scaffoldState = rememberScaffoldState()
     val discountproduct by viewModel.discountproduct
@@ -83,6 +94,63 @@ fun CheckoutScreen(
         selectedVoucher!!.discount
     } else {
         0.0
+    }
+    // *** Effect để kích hoạt thanh toán ZaloPay khi token có giá trị ***
+    LaunchedEffect(zaloPayToken) {
+        zaloPayToken?.let { token ->
+            Log.d ("CheckoutScreen", "ZaloPay token received: $zaloPayToken. Initiating payment...")
+            Log.d("CheckoutScreen", "ZaloPay token received: $token. Initiating payment...")
+            // Lấy Activity context
+            val activity = context as? Activity
+            Log.d("CheckoutScreen", "Activity context: $activity")
+            val merchantAppDeeplink = "demozpdk://app" // **DEEPLINK THỰC TẾ CỦA BẠN**
+
+            if (activity != null) {
+                ZaloPaySDK.getInstance().payOrder(
+                    activity, // Truyền Activity
+                    token,
+                    merchantAppDeeplink,
+                    object : PayOrderListener {
+                        override fun onPaymentSucceeded(
+                            transactionId: String,
+                            transToken: String,
+                            appTransID: String
+                        ) {
+                            Log.d("CheckoutScreen", "ZaloPay SUCCESS: $transactionId, $transToken, $appTransID")
+                            // Báo cho ViewModel kết quả thành công
+                         viewModel.handleZaloPayResult(null, transToken, appTransID)
+                            navController.navigate(DetailScreen.PaymentSuccessScreen.route)
+                            // ViewModel sẽ xử lý logic sa thành công (xóa cart, update order, navigate)
+                        }
+
+                        override fun onPaymentCanceled(
+                            zpTransToken: String,
+                            appTransID: String
+                        ) {
+                            Log.d("CheckoutScreen", "ZaloPay CANCELED: $zpTransToken, $appTransID")
+                            // Báo cho ViewModel kết quả hủy
+                           viewModel.handleZaloPayResult(ZaloPayError.EMPTY_RESULT, zpTransToken, appTransID)
+                            // ViewModel sẽ xử lý logic sau hủy (update order status, show message)
+                        }
+
+                        override fun onPaymentError(
+                            zaloPayError: ZaloPayError,
+                            zpTransToken: String,
+                            appTransID: String
+                        ) {
+                            Log.e("CheckoutScreen", "ZaloPay ERROR: $zaloPayError, $zpTransToken, $appTransID")
+                            // Báo cho ViewModel kết quả lỗi
+//                            viewModel.handleZaloPayResult(zaloPayError, zpTransToken, appTransID)
+                            // ViewModel sẽ xử lý logic sau lỗi (update order status, show message)
+                        }
+                    }
+                )
+            } else {
+                Log.e("CheckoutScreen", "Context is not an Activity, cannot initiate ZaloPay payment.")
+                // Xử lý trường hợp không lấy được Activity context nếu cần
+//                viewModel.handleZaloPayResult(ZaloPayError.PAYMENT_ERROR, null, null) // Báo lỗi chung
+            }
+        }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -169,7 +237,9 @@ fun CheckoutScreen(
             item {
                 payment(
                     selectedMethod = selectedPaymentMethod,
-                    onSelectMethod = { selectedPaymentMethod = it }
+                    onSelectMethod = { selectedPaymentMethod = it
+                        viewModel.setPaymentMethod(it) // Cập nhật phương thức thanh toán trong ViewModel
+                    }
                 )
             }
             item {
@@ -182,9 +252,33 @@ fun CheckoutScreen(
 
 
         }
-        // phaanf voucher
+        // phần footer
             ShopeeFooter(
-                onClick = { /* TODO: Handle click event */ },
+                onClick = {
+                    Log.d("CheckoutScreen", "Selected payment method: $selectedPaymentMethod")
+                    Log.d ("CheckoutScreen", "Selected voucher: $paymentMethod ")
+                    when (selectedPaymentMethod) {
+                        "ZaloPay" -> {
+                            viewModel.processPayment(
+                                onSuccess = {
+                                    // Callback này sẽ được gọi từ ViewModel nếu KHÔNG phải ZaloPay
+                                    // hoặc từ ZaloPayListener -> ViewModel -> Composable nếu là ZaloPay THÀNH CÔNG.
+                                    Log.d("CheckoutScreen", "Payment process successful (Callback). Navigating...")
+                                    navController.navigate("order_success_screen") // Điều hướng đến màn hình thành công
+                                },
+                                onError = { errorMessage ->
+                                    // Callback này sẽ được gọi từ ViewModel nếu có lỗi (backend, ZaloPay fail/cancel)
+                                    Log.e("CheckoutScreen", "Payment process failed (Callback): $errorMessage")
+                                    // ViewModel sẽ cập nhật state error, hiển thị Snackbar thông qua Effect bên trên
+                                    // hoặc bạn xử lý hiển thị thông báo ở đây nếu không dùng state error chung
+                                }
+                            )
+                        }
+                        else -> {
+                            // Xử lý các phương thức thanh toán khác
+                        }
+                    }
+                },
                 total = discountproduct,
                 shippingFee = shippingFee,
                 discount = voucherDiscount
@@ -231,7 +325,8 @@ fun ShopeeFooter(
         }
 
         Button(
-            onClick = onClick,
+            onClick = onClick, // <-- Sửa ở đây! Gắn lambda nhận được vào Button
+
             colors = ButtonDefaults.buttonColors(backgroundColor = Color.Red),
             shape = RoundedCornerShape(8.dp),
             modifier = Modifier
@@ -342,7 +437,7 @@ fun formatCurrency(amount: Double): String {
 
 @Composable
 fun payment(
-    selectedMethod: String = "BIDV",
+    selectedMethod: String = "COD",
     onSelectMethod: (String) -> Unit = {}
 ) {
     Column(
@@ -363,7 +458,7 @@ fun payment(
         val methods = listOf(
             Triple("Thanh toán khi nhận hàng", "COD", ""),
             Triple("MoMo", "MoMo", "Giảm ₫10.000"),
-            Triple("Thẻ BIDV *7695", "BIDV", "Giảm ₫10.000"),
+            Triple("ZaloPay", "ZaloPay", "Thanh Toán Ngay"),
             Triple("SPayLater - Hạn mức 8.000.000₫", "SPayLater", "Trả góp linh hoạt")
         )
 

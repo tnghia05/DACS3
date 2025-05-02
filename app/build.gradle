@@ -6,6 +6,7 @@ plugins {
     id 'com.google.gms.google-services'
     id 'com.google.devtools.ksp'
     id 'org.jetbrains.compose' version '1.5.11'
+    id 'kotlin-parcelize' // 👈 thêm dòng này
 
 }
 android {
@@ -94,12 +95,16 @@ dependencies {
         exclude group: 'com.google.protobuf', module: 'protobuf-javalite'
     }
 
+    // Commons Codec
+    implementation 'commons-codec:commons-codec:1.15'
+
     // Room
     implementation 'androidx.room:room-runtime:2.6.1'
     implementation 'androidx.room:room-ktx:2.6.1'
     implementation 'androidx.room:room-paging:2.6.1'
     implementation 'com.google.firebase:firebase-functions'
     implementation 'androidx.compose.foundation:foundation-layout:1.4.1'
+    implementation fileTree(dir: 'C:\\Users\\adm\\Downloads\\zalolib', include: ['*.aar', '*.jar'], exclude: [])
     ksp 'androidx.room:room-compiler:2.6.1'
 
     // Compose UI
@@ -149,11 +154,21 @@ dependencies {
     implementation 'com.google.android.gms:play-services-analytics-impl:18.2.0'
     implementation('com.google.ai.client.generativeai:generativeai:0.1.1')
     implementation 'com.google.protobuf:protobuf-javalite:3.21.12'
+    implementation(fileTree(dir: 'C:\\Users\\adm\\Downloads\\zalolib', include: ['*.aar', '*.jar'], exclude: []))
+    implementation ("com.squareup.okhttp3:okhttp:4.10.0") {
+    }
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.6.4' // Hoặc phiên bản mới nhất
+
+    implementation 'com.google.code.gson:gson:2.8.9'
+    // ZaloPay
 
     // Test
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+
+    //zalopay
+    implementation(name: 'zpdk-release-v3.1', ext: 'aar')
 
 }
 

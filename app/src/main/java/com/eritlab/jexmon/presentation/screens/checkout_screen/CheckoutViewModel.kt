@@ -1,8 +1,12 @@
 package com.eritlab.jexmon.presentation.screens.checkout_screen
 
+import android.content.Context
+import android.util.Log
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.eritlab.jexmon.data.zalopay.Api.CreateOrder
 import com.eritlab.jexmon.domain.model.AddressModel
 import com.eritlab.jexmon.domain.model.CartItem
 import com.eritlab.jexmon.domain.model.OrderModel
@@ -10,12 +14,24 @@ import com.eritlab.jexmon.domain.model.VoucherModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
+import vn.zalopay.sdk.ZaloPayError
 import javax.inject.Inject
 
 @HiltViewModel
-class CheckoutViewModel @Inject constructor() : ViewModel() {
+class CheckoutViewModel @Inject constructor(
+    @ApplicationContext private val context: Context // Thêm annotation @ApplicationContext
+) : ViewModel() {
+
     private val _cartItems = mutableStateOf<List<CartItem>>(emptyList())
     val cartItems: State<List<CartItem>> = _cartItems
 
@@ -38,7 +54,7 @@ class CheckoutViewModel @Inject constructor() : ViewModel() {
 
     private val _total = mutableStateOf(0.0)
     val total: State<Double> = _total
-    private  val  _discountproduct = mutableStateOf(0.0)
+    private val _discountproduct = mutableStateOf(0.0)
     val discountproduct: State<Double> = _discountproduct
 
     private val _isLoading = mutableStateOf(false)
@@ -46,7 +62,21 @@ class CheckoutViewModel @Inject constructor() : ViewModel() {
 
     private val _error = mutableStateOf<String?>(null)
     val error: State<String?> = _error
+    // State để giữ mã giao dịch ZaloPay (ViewModel chỉ lưu token, không gọi SDK)
+    private val _zaloPayToken = mutableStateOf<String?>(null)
+    val zaloPayToken: State<String?> = _zaloPayToken
+    sealed class PaymentEvent {
+        object Success : PaymentEvent() // Sự kiện thanh toán thành công
+        data class Error(val message: String) : PaymentEvent() // Sự kiện lỗi (chứa thông báo)
+        object Cancelled : PaymentEvent() // Sự kiện hủy
+        // Bạn có thể thêm các loại sự kiện khác nếu cần, ví dụ NavigateToOrderDetails(val orderId: String)
+    }
 
+    private val _paymentEvents = MutableSharedFlow<PaymentEvent>()
+    val paymentEvents: SharedFlow<PaymentEvent> = _paymentEvents.asSharedFlow()
+    // State để giữ AppTransID hoặc OrderId sau khi order được tạo thành công
+    private val _currentOrderId = mutableStateOf<String?>(null)
+    val currentOrderId: State<String?> = _currentOrderId
     private val db = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
 
@@ -60,6 +90,7 @@ class CheckoutViewModel @Inject constructor() : ViewModel() {
     fun setShippingAddress(address: AddressModel) {
         _shippingAddress.value = address
     }
+
     fun setVoucher(voucher: VoucherModel) {
         _discount.value = voucher.discount
         calculateTotal()
@@ -75,10 +106,12 @@ class CheckoutViewModel @Inject constructor() : ViewModel() {
         calculateProductDiscountTotal()
 
     }
+
     fun setdiscountproduct(discount: Double) {
         _discountproduct.value = discount
         calculateProductDiscountTotal()
     }
+
     fun calculateProductDiscountTotal(): Double {
         // Tổng giá sau khi đã áp dụng giảm giá từng sản phẩm
         val discountedTotal = _cartItems.value.sumOf { item ->
@@ -127,6 +160,7 @@ class CheckoutViewModel @Inject constructor() : ViewModel() {
                 _isLoading.value = false
             }
     }
+
     fun selectVoucher(code: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
         _isLoading.value = true
 
@@ -180,6 +214,7 @@ class CheckoutViewModel @Inject constructor() : ViewModel() {
                 _isLoading.value = false
             }
     }
+
     private val _selectedVoucher = MutableStateFlow<VoucherModel?>(null)
     val selectedVoucher: StateFlow<VoucherModel?> = _selectedVoucher
 
@@ -212,46 +247,6 @@ class CheckoutViewModel @Inject constructor() : ViewModel() {
     }
 
 
-
-
-    fun placeOrder(onSuccess: () -> Unit, onError: (String) -> Unit) {
-        val userId = auth.currentUser?.uid ?: return
-        val paymentMethod = _paymentMethod.value ?: return
-
-        _isLoading.value = true
-
-        val order = OrderModel(
-            userId = userId,
-            items = _cartItems.value,
-            paymentMethod = paymentMethod,
-            subtotal = _subtotal.value,
-            shippingFee = _shippingFee.value,
-            discount = _discount.value,
-            total = _total.value
-        )
-
-        db.collection("orders")
-            .add(order)
-            .addOnSuccessListener { documentRef ->
-                // Cập nhật ID cho đơn hàng
-                documentRef.update("id", documentRef.id)
-                    .addOnSuccessListener {
-                        // Xóa giỏ hàng sau khi đặt hàng thành công
-                        clearCart(userId) {
-                            _isLoading.value = false
-                            onSuccess()
-                        }
-                    }
-                    .addOnFailureListener { e ->
-                        _isLoading.value = false
-                        onError(e.message ?: "Đã xảy ra lỗi khi tạo đơn hàng")
-                    }
-            }
-            .addOnFailureListener { e ->
-                _isLoading.value = false
-                onError(e.message ?: "Đã xảy ra lỗi khi tạo đơn hàng")
-            }
-    }
     fun fetchCartItems() {
         val userId = auth.currentUser?.uid ?: return
 
@@ -271,7 +266,9 @@ class CheckoutViewModel @Inject constructor() : ViewModel() {
                         productId = doc.getString("productId") ?: "",
                         discount = (doc.getDouble("discount") ?: 0.0),
                         size = (doc.getLong("size")?.toInt() ?: 0),
-                        color = convertToColorName(doc.getString("color") ?: "#FFFFFF") // Mặc định là trắng
+                        color = convertToColorName(
+                            doc.getString("color") ?: "#FFFFFF"
+                        ) // Mặc định là trắng
                     )
                 }
                 setCartItems(cartList)
@@ -282,6 +279,7 @@ class CheckoutViewModel @Inject constructor() : ViewModel() {
                 _isLoading.value = false
             }
     }
+
     fun convertToHex(color: String): String {
         val colorMap = mapOf(
             "red" to "#FF0000",
@@ -298,6 +296,7 @@ class CheckoutViewModel @Inject constructor() : ViewModel() {
 
         return colorMap[color.lowercase()] ?: color // Nếu không tìm thấy, giả định nó là mã hex
     }
+
     fun convertToColorName(hex: String): String {
         val colorMap = mapOf(
             "#FF0000" to "Red",
@@ -338,9 +337,11 @@ class CheckoutViewModel @Inject constructor() : ViewModel() {
                 onComplete()
             }
     }
+
     fun getSelectedVouchers(): List<VoucherModel> {
         return _vouchers.value.filter { it.chon }
     }
+
     fun setSelectedVouchers(selectedVouchers: List<VoucherModel>) {
         _vouchers.value = _vouchers.value.map { voucher ->
             if (selectedVouchers.contains(voucher)) {
@@ -351,6 +352,234 @@ class CheckoutViewModel @Inject constructor() : ViewModel() {
         }
     }
 
+
+    // *** Hàm xử lý quy trình thanh toán (Tạo Order -> Lấy Token) ***
+    fun processPayment(onSuccess: () -> Unit, onError: (String) -> Unit) {
+        val userId = auth.currentUser?.uid
+        if (userId == null) {
+            onError("Người dùng chưa đăng nhập")
+            return
+        }
+        val paymentMethod = _paymentMethod.value
+        if (paymentMethod == null) {
+            onError("Vui lòng chọn phương thức thanh toán")
+            return
+        }
+        val shippingAddress = _shippingAddress.value
+        if (shippingAddress == null) {
+            onError("Vui lòng chọn địa chỉ giao hàng")
+            return
+        }
+        val cartItems = _cartItems.value
+        if (cartItems.isEmpty()) {
+            onError("Giỏ hàng trống")
+            return
+        }
+        if (paymentMethod != "ZaloPay") {
+            // Xử lý các phương thức không phải ZaloPay ở đây
+            // VD: Chỉ lưu order vào DB và xóa cart, sau đó gọi onSuccess
+            _isLoading.value = true // Bắt đầu loading cho COD
+            viewModelScope.launch(Dispatchers.IO) {
+                try {
+                    val order = OrderModel( // Tạo order cho COD
+                        userId = userId,
+                        items = cartItems,
+                        paymentMethod = paymentMethod,
+                        subtotal = _subtotal.value, // Tổng tiền hàng gốc
+                        discount = discount.value, // Số tiền giảm giá voucher
+                        shippingFee = _shippingFee.value, // Phí vận chuyển
+                        total = total.value, // Tổng tiền cuối cùng
+                        status = "Pending COD" // Trạng thái COD
+                    )
+                    val documentRef = db.collection("orders").add(order).await()
+                    db.collection("orders").document(documentRef.id).update("id", documentRef.id).await()
+                    // Xóa voucher đã chọn nếu có
+                    _selectedVoucher.value?.let { voucher ->
+                        db.collection("vouchers").document(voucher.code).update("Chon", false).await()
+                    }
+                    // Chuyển về Main thread để gọi callback UI
+                    launch(Dispatchers.Main) {
+                        onSuccess() // Gọi onSuccess cho COD
+                        _isLoading.value = false // Kết thúc loading cho COD
+                        _selectedVoucher.value = null // Xóa voucher đã chọn khỏi state UI
+                    }
+                } catch (e: Exception) {
+                    launch(Dispatchers.Main) {
+                        onError("Lỗi đặt hàng COD: ${e.message}") // Gọi onError cho COD
+                        _isLoading.value = false // Kết thúc loading cho COD
+                    }
+                }
+            }
+            return // Kết thúc hàm nếu không phải ZaloPay
+        }
+
+        // *** LOGIC CHỈ DÀNH CHO ZALOPAY ***
+        _isLoading.value = true // Bắt đầu loading cho ZaloPay
+
+        viewModelScope.launch(Dispatchers.IO) { // Chạy trên IO thread
+            try {
+                // Tạo đơn hàng trên Firestore trước để có ID
+                val order = OrderModel(
+                    userId = userId,
+                    items = cartItems,
+                    paymentMethod = paymentMethod,
+                    subtotal = _subtotal.value, // Tổng tiền hàng gốc
+                    discount = discount.value, // Số tiền giảm giá voucher
+                    shippingFee = _shippingFee.value, // Phí vận chuyển
+                    total = total.value, // Tổng tiền cuối cùng
+                    status = "Pending COD" // Trạng thái COD
+                )
+
+                val documentRef = db.collection("orders").add(order).await()
+                val orderId = documentRef.id
+                db.collection("orders").document(orderId).update("id", orderId).await()
+
+                // Lưu OrderId vào state để sử dụng sau này (ví dụ: khi xử lý kết quả trả về)
+                _currentOrderId.value = orderId
+
+
+                // *** BƯỚC QUAN TRỌNG: GỌI BACKEND ĐỂ LẤY ZALOPAY TOKEN ***
+                // Sử dụng suspend function createOrder() của bạn
+                val zpTransToken = createOrder(
+                    amount = _total.value.toLong(), // Sử dụng tổng tiền cuối cùng để tạo order ZaloPay
+                    description = "Thanh toán đơn hàng ${orderId}"
+                )
+
+                // *** Cập nhật state zaloPayToken ***
+                // Việc cập nhật này sẽ được Composable quan sát và kích hoạt gọi SDK
+                _zaloPayToken.value = zpTransToken
+
+                // Không gọi onSuccess/onError ở đây.
+                // loading = true vẫn giữ cho đến khi ZaloPay listener trả về kết quả.
+
+            } catch (e: Exception) {
+                // Xử lý lỗi trong quá trình tạo order trên Firestore hoặc gọi backend
+                _error.value = "Lỗi xử lý thanh toán: ${e.message}"
+                Log.d("CheckoutViewModel", "Error processing ZaloPay payment", e)
+                // Chuyển về Main thread để gọi callback UI
+                launch(Dispatchers.Main) {
+                    onError("Lỗi xử lý thanh toán ZaloPay: ${e.message}")
+                    _isLoading.value = false // Kết thúc loading nếu có lỗi trước khi gọi SDK
+                }
+            }
+        }
+    }
+
+    // Trong hàm handleZaloPayResult trong CheckoutViewModel.kt
+
+    fun handleZaloPayResult(errorCode: ZaloPayError?, transToken: String?, appTransID: String?) = viewModelScope.launch(Dispatchers.IO) {
+        _isLoading.value = false // Kết thúc trạng thái loading khi có kết quả từ ZaloPay
+
+        val orderId = _currentOrderId.value // Lấy OrderId đang xử lý
+        _currentOrderId.value = null // Xóa OrderId hiện tại sau khi xử lý
+
+        try {
+            when (errorCode) {
+                ZaloPayError.EMPTY_RESULT -> {
+                    Log.d("ZaloPay Result", "CANCELED: $transToken, AppTransID: $appTransID, OrderId: $orderId")
+                    orderId?.let {
+                        db.collection("orders").document(it).update("status", "Cancelled by user").await()
+                    }
+                    launch(Dispatchers.Main) { _paymentEvents.emit(PaymentEvent.Cancelled) }
+                }
+                ZaloPayError.FAIL -> { // Lỗi chung từ ZaloPay
+                    Log.e("ZaloPay Result", "FAIL: $transToken, AppTransID: $appTransID, OrderId: $orderId, ErrorCode: $errorCode")
+                    orderId?.let {
+                        db.collection("orders").document(it).update("status", "Payment failed").await()
+                    }
+                    val errorMessage = "Thanh toán ZaloPay thất bại."
+                    launch(Dispatchers.Main) { _paymentEvents.emit(PaymentEvent.Error(errorMessage)) }
+                }
+                null -> { // Thành công (errorCode == null trong onPaymentSucceeded)
+                    Log.d("ZaloPay Result", "SUCCESS: TransactionId: $transToken, AppTransID: $appTransID, OrderId: $orderId")
+                    orderId?.let {
+                        db.collection("orders").document(it).update("status", "Paid with ZaloPay").await()
+                        _selectedVoucher.value?.let { voucher ->
+                            db.collection("vouchers").document(voucher.code).update("Chon", false).await()
+                        }
+                        launch(Dispatchers.Main) { _selectedVoucher.value = null } // Reset voucher state UI
+                    }
+                    launch(Dispatchers.Main) { _paymentEvents.emit(PaymentEvent.Success) }
+                }
+
+                // *** THÊM CÁC NHÁNH BỊ THIẾU THEO YÊU CẦU CỦA TRÌNH BIÊN DỊCH ***
+                ZaloPayError.UNKNOWN -> { // Lỗi không xác định
+                    Log.e("ZaloPay Result", "UNKNOWN ERROR: $transToken, AppTransID: $appTransID, OrderId: $orderId")
+                    orderId?.let {
+                        db.collection("orders").document(it).update("status", "Payment failed (Unknown)").await()
+                    }
+                    launch(Dispatchers.Main) { _paymentEvents.emit(PaymentEvent.Error("Lỗi thanh toán không xác định từ ZaloPay.")) }
+                }
+                ZaloPayError.PAYMENT_APP_NOT_FOUND -> { // Không tìm thấy ứng dụng ZaloPay
+                    Log.e("ZaloPay Result", "APP NOT FOUND: $transToken, AppTransID: $appTransID, OrderId: $orderId")
+                    // Không cần cập nhật status order thành failed nếu chỉ do app không tìm thấy, user có thể thử lại
+                    // Gửi event báo lỗi và gợi ý cài app
+                    launch(Dispatchers.Main) { _paymentEvents.emit(PaymentEvent.Error("Không tìm thấy ứng dụng ZaloPay. Vui lòng cài đặt.")) }
+                }
+                ZaloPayError.INPUT_IS_INVALID -> { // Dữ liệu đầu vào không hợp lệ
+                    Log.e("ZaloPay Result", "INPUT INVALID: $transToken, AppTransID: $appTransID, OrderId: $orderId")
+                    orderId?.let {
+                        db.collection("orders").document(it).update("status", "Payment failed (Input Invalid)").await()
+                    }
+                    launch(Dispatchers.Main) { _paymentEvents.emit(PaymentEvent.Error("Dữ liệu thanh toán không hợp lệ. Vui lòng thử lại.")) }
+                }
+                ZaloPayError.EMPTY_RESULT -> { // Kết quả trả về rỗng
+                    Log.e("ZaloPay Result", "EMPTY RESULT: $transToken, AppTransID: $appTransID, OrderId: $orderId")
+                    orderId?.let {
+                        db.collection("orders").document(it).update("status", "Payment failed (Empty Result)").await()
+                    }
+                    launch(Dispatchers.Main) { _paymentEvents.emit(PaymentEvent.Error("ZaloPay trả về kết quả rỗng. Vui lòng thử lại.")) }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("CheckoutViewModel", "Error during post ZaloPay processing", e)
+            launch(Dispatchers.Main) { _paymentEvents.emit(PaymentEvent.Error("Lỗi xử lý sau thanh toán: ${e.message}")) }
+        }
+    }
+    // suspend function tạo order ZaloPay (gọi backend)
+    private suspend fun createOrder(amount: Long, description: String): String {
+        return withContext(Dispatchers.IO) { // Đảm bảo chạy trên IO thread
+            try {
+                val createOrder = CreateOrder() // Lớp gọi API backend của bạn
+                val jsonResult = createOrder.createOrder(amount.toString()) // Gọi hàm API của bạn
+
+                // Log response để debug
+                android.util.Log.d("ZaloPay API Response", "Response from ZaloPay API: $jsonResult")
+
+                // Phân tích kết quả từ backend để lấy token
+                when {
+                    jsonResult == null -> {
+                        android.util.Log.e("ZaloPay API Response", "API response is null")
+                        throw Exception("Không thể tạo đơn hàng ZaloPay: Kết quả trả về null")
+                    }
+                    !jsonResult.has("return_code") || jsonResult.getInt("return_code") != 1
+                        -> {
+                        // Xử lý lỗi từ API backend của bạn (returncode != 1 là lỗi)
+                        val returnCode = if (jsonResult.has("return_code")) jsonResult.getInt("return_code") else -99
+                        val returnMessage = if (jsonResult.has("return_message")) jsonResult.getString("return_message") else "Lỗi không rõ"
+                        android.util.Log.e("ZaloPay API Response", "API returned error: Code $returnCode, Message: $returnMessage")
+                        throw Exception("Lỗi từ API backend: $returnMessage (Code: $returnCode)")
+                    }
+                    !jsonResult.has("zp_trans_token") -> {
+                        android.util.Log.e("ZaloPay API Response", "Response does not contain zp_trans_token")
+                        throw Exception("Phản hồi từ backend không chứa token thanh toán ZaloPay")
+                    }
+                    else -> {
+                        val zpTransToken = jsonResult.getString("zp_trans_token")
+                        if (zpTransToken.isNullOrEmpty()) {
+                            android.util.Log.e("ZaloPay API Response", "zp_trans_token is null or empty")
+                            throw Exception("Token thanh toán ZaloPay không hợp lệ từ backend")
+                        }
+                        android.util.Log.d("ZaloPay API Response", "Successfully created order with token: $zpTransToken")
+                        zpTransToken // Trả về token
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("ZaloPay API Response", "Exception calling backend API: ${e.message}", e)
+                throw Exception("Lỗi gọi API backend: ${e.message ?: "Lỗi không xác định"}")
+            }
+        }
+    }
 
 
 }
