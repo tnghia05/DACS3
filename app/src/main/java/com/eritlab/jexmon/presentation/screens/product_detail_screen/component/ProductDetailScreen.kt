@@ -591,7 +591,7 @@ fun BottomSheetContent(
     Log.d("BottomSheet", "BottomSheetContent hiển thị")
 
     Column( modifier = Modifier
-        .fillMaxHeight(0.5f)
+        .fillMaxHeight(0.7f)
         .padding(16.dp)
     ) {
         // Hàng chứa ảnh sản phẩm và thông tin

@@ -51,9 +51,12 @@ class CartViewModel @Inject constructor() : ViewModel() {
 
     private fun calculateTotal() {
 
-        val total1 = _cartItems.value.sumOf { (1 - it.discount.toFloat() / 100)*it.price  }
-        val subtotal = _cartItems.value.sumOf { total1 * it.quantity }
-        _totalAmount.value = subtotal - _discountAmount.value*subtotal/100
+        val total1 = _cartItems.value.sumOf { (1 - it.discount.toFloat() / 100)*it.price *it.quantity }
+
+        Log.d("CartViewModel", "Total1: $total1")
+//        val subtotal = _cartItems.value.sumOf { total1 * it.quantity }
+//        Log.d("CartViewModel", "Subtotal: $subtotal")
+        _totalAmount.value = total1 - _discountAmount.value*total1/100
     }
     fun resetAllVouchersSelection(onSuccess: () -> Unit, onError: (String) -> Unit) {
         db.collection("vouchers")
@@ -150,6 +153,11 @@ class CartViewModel @Inject constructor() : ViewModel() {
     fun updateQuantity(cartId: String, newQuantity: Int) {
         val userId = auth.currentUser?.uid ?: return
         val cartItem = _cartItems.value.find { it.id == cartId } ?: return // 🔥 dùng id, không dùng productId
+
+        if (newQuantity == 0) {
+            removeItem(cartItem)
+            return
+        }
         val updatedItem = cartItem.copy(quantity = newQuantity)
 
         db.collection("carts")

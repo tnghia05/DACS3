@@ -8,7 +8,8 @@ data class OrderModel(
     val items: List<CartItem> = emptyList(),
     val shippingAddress: ShippingAddress = ShippingAddress(),
     val paymentMethod: String = "", // COD, MOMO, ZALOPAY, etc.
-    val status: String = "PENDING", // PENDING, CONFIRMED, SHIPPING, DELIVERED, CANCELLED
+    val status: String = "PENDING", // Chua xac nhan, Da xac nhan, Dang giao, Da giao, Da huy
+    val paymentStatus: String = "UNPAID", // UNPAID, PAID, CANCELED
     val subtotal: Double = 0.0,
     val shippingFee: Double = 0.0,
     val discount: Double = 0.0,

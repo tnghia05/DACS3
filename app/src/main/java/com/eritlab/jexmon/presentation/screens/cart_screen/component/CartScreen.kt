@@ -51,6 +51,8 @@ import com.eritlab.jexmon.presentation.screens.cart_screen.CartViewModel
 import com.eritlab.jexmon.presentation.ui.theme.PrimaryColor
 import com.eritlab.jexmon.presentation.ui.theme.PrimaryLightColor
 import com.eritlab.jexmon.presentation.ui.theme.TextColor
+import java.text.NumberFormat
+import java.util.Locale
 
 
 @Composable
@@ -197,7 +199,7 @@ fun CartScreen(
                         Row {
                             val discountedPrice = cartItem.price * (1 - cartItem.discount.toFloat() / 100)
                             Text(
-                                text = "$${String.format("%.2f", discountedPrice)}",
+                                text = formatPrice(discountedPrice),
                                 color = MaterialTheme.colors.PrimaryColor,
                                 fontWeight = FontWeight.Bold
                             )
@@ -357,7 +359,7 @@ fun CartScreen(
                     }
                     
                     Text(
-                        text = "$${String.format("%.2f", totalAmount)}",
+                        text = "${formatPrice(totalAmount)}",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colors.PrimaryColor
@@ -401,4 +403,8 @@ fun CartScreen(
         }
 
     }
+
+}private fun formatPrice(price: Double): String {
+    val format = NumberFormat.getCurrencyInstance(Locale("vi", "VN"))
+    return format.format(price)
 }

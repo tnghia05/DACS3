@@ -54,6 +54,9 @@ class CheckoutViewModel @Inject constructor(
 
     private val _total = mutableStateOf(0.0)
     val total: State<Double> = _total
+
+    private val _aftertotal = mutableStateOf(0.0)
+    val aftertotal: State<Double> = _aftertotal
     private val _discountproduct = mutableStateOf(0.0)
     val discountproduct: State<Double> = _discountproduct
 
@@ -84,6 +87,7 @@ class CheckoutViewModel @Inject constructor(
         _cartItems.value = items
         calculateTotal()
         calculateProductDiscountTotal()
+        calculateProductDiscountTotalnodis()
 
     }
 
@@ -94,6 +98,9 @@ class CheckoutViewModel @Inject constructor(
     fun setVoucher(voucher: VoucherModel) {
         _discount.value = voucher.discount
         calculateTotal()
+        calculateProductDiscountTotal()
+        calculateProductDiscountTotalnodis()
+
     }
 
     fun setPaymentMethod(method: String) {
@@ -104,29 +111,54 @@ class CheckoutViewModel @Inject constructor(
         _discount.value = discount
         calculateTotal()
         calculateProductDiscountTotal()
+        calculateProductDiscountTotalnodis()
 
     }
 
     fun setdiscountproduct(discount: Double) {
         _discountproduct.value = discount
         calculateProductDiscountTotal()
+        calculateProductDiscountTotalnodis()
+
     }
 
     fun calculateProductDiscountTotal(): Double {
+        fetchSelectedVoucher()
         // Tổng giá sau khi đã áp dụng giảm giá từng sản phẩm
         val discountedTotal = _cartItems.value.sumOf { item ->
             val discountRate = item.discount / 100.0
             val discountedPrice = item.price * (1 - discountRate)
             discountedPrice * item.quantity
         }
-        _discountproduct.value = discountedTotal
+        Log.d("CheckoutViewModel", "Discounted Total: ${_discountproduct.value}")
+        // Ghi log tổng giá sau khi đã áp dụng giảm giá
+        if (_selectedVoucher.value != null) {
+            Log.d("CheckoutViewModel", "Selected Voucher: ${_selectedVoucher.value!!.discount}")
+            _discountproduct.value = discountedTotal - (_selectedVoucher.value!!.discount * discountedTotal / 100)
+        } else {
+            _discountproduct.value = discountedTotal
+        }
+        return discountedTotal
+    }  fun calculateProductDiscountTotalnodis(): Double {
+        fetchSelectedVoucher()
+        val discountedTotal = _cartItems.value.sumOf { item ->
+            val discountRate = item.discount / 100.0
+            val discountedPrice = item.price * (1 - discountRate)
+            discountedPrice * item.quantity
+        }
+        // Ghi log tổng giá sau khi đã áp dụng giảm giá
+        _aftertotal.value = discountedTotal
+
+        Log.d("CheckoutViewModel", "Discounted Total: ${_aftertotal.value}")
         return discountedTotal
     }
 
     private fun calculateTotal() {
         val subtotal = _cartItems.value.sumOf { it.price * it.quantity }
         _subtotal.value = subtotal
-        _total.value = subtotal + _shippingFee.value - (_discount.value * subtotal / 100)
+        Log.d("CheckoutViewModel", "Subtotal: $subtotal")
+        _total.value = subtotal  - (_discount.value * subtotal / 100)
+        Log.d("CheckoutViewModel", "Total: ${_total.value}")
     }
 
 
@@ -238,6 +270,12 @@ class CheckoutViewModel @Inject constructor(
                     )
                 }
                 _selectedVoucher.value = selectedVoucher // <-- Chỉ lưu 1 voucher đang chọn
+                if (_selectedVoucher.value != null) {
+                    Log.d("CheckoutViewModel", "Selected Voucher1: ${_selectedVoucher.value!!.discount}")
+                } else {
+                    Log.d("CheckoutViewModel", "No voucher selected1")
+                }
+
                 _isLoading.value = false
             }
             .addOnFailureListener { exception ->
@@ -427,7 +465,8 @@ class CheckoutViewModel @Inject constructor(
                     discount = discount.value, // Số tiền giảm giá voucher
                     shippingFee = _shippingFee.value, // Phí vận chuyển
                     total = total.value, // Tổng tiền cuối cùng
-                    status = "Pending COD" // Trạng thái COD
+                    status = "Chua xac nhan", // Trạng thái đơn hàng
+                    paymentStatus = "Chua thanh toan", // Trạng thái thanh toán
                 )
 
                 val documentRef = db.collection("orders").add(order).await()
@@ -441,7 +480,7 @@ class CheckoutViewModel @Inject constructor(
                 // *** BƯỚC QUAN TRỌNG: GỌI BACKEND ĐỂ LẤY ZALOPAY TOKEN ***
                 // Sử dụng suspend function createOrder() của bạn
                 val zpTransToken = createOrder(
-                    amount = _total.value.toLong(), // Sử dụng tổng tiền cuối cùng để tạo order ZaloPay
+                    amount = _discountproduct.value.toLong()  , // Sử dụng tổng tiền cuối cùng để tạo order ZaloPay
                     description = "Thanh toán đơn hàng ${orderId}"
                 )
 
@@ -478,7 +517,7 @@ class CheckoutViewModel @Inject constructor(
                 ZaloPayError.EMPTY_RESULT -> {
                     Log.d("ZaloPay Result", "CANCELED: $transToken, AppTransID: $appTransID, OrderId: $orderId")
                     orderId?.let {
-                        db.collection("orders").document(it).update("status", "Cancelled by user").await()
+                        db.collection("orders").document(it).update("status", "Chờ xác nhận").await()
                     }
                     launch(Dispatchers.Main) { _paymentEvents.emit(PaymentEvent.Cancelled) }
                 }
@@ -493,7 +532,9 @@ class CheckoutViewModel @Inject constructor(
                 null -> { // Thành công (errorCode == null trong onPaymentSucceeded)
                     Log.d("ZaloPay Result", "SUCCESS: TransactionId: $transToken, AppTransID: $appTransID, OrderId: $orderId")
                     orderId?.let {
-                        db.collection("orders").document(it).update("status", "Paid with ZaloPay").await()
+                        db.collection("orders").document(it).update("status", "Dang giao").await()
+                        db.collection("orders").document(it).update("paymentStatus", "ZaloPay").await()
+
                         _selectedVoucher.value?.let { voucher ->
                             db.collection("vouchers").document(voucher.code).update("Chon", false).await()
                         }

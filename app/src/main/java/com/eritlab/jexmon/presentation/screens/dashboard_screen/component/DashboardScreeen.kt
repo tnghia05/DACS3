@@ -50,6 +50,8 @@ import com.eritlab.jexmon.presentation.screens.dashboard_screen.DashboardViewMod
 import com.eritlab.jexmon.presentation.ui.theme.PrimaryColor
 import com.eritlab.jexmon.presentation.ui.theme.PrimaryLightColor
 import com.eritlab.jexmon.presentation.ui.theme.TextColor
+import java.text.NumberFormat
+import java.util.Locale
 
 @Composable
 
@@ -424,7 +426,7 @@ fun DashboardScreen(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = "$ ${product.price}",
+                                text = " ${formatPrice(product.price)}",
                                 fontWeight = FontWeight(600),
                                 color = MaterialTheme.colors.PrimaryColor
                             )
@@ -461,4 +463,8 @@ fun DashboardScreen(
         }
 
     }
+}
+private fun formatPrice(price: Double): String {
+    val format = NumberFormat.getCurrencyInstance(Locale("vi", "VN"))
+    return format.format(price)
 }

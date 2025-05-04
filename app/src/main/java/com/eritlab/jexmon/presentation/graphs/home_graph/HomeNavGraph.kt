@@ -14,6 +14,7 @@ import com.eritlab.jexmon.presentation.screens.chat_list_screen.ChatListScreen
 import com.eritlab.jexmon.presentation.screens.conversation_screen.component.ChatRepository
 import com.eritlab.jexmon.presentation.screens.conversation_screen.component.ConversationScreen
 import com.eritlab.jexmon.presentation.screens.dashboard_screen.component.DashboardScreen
+import com.eritlab.jexmon.presentation.screens.don_da_mua.DonMua
 import com.eritlab.jexmon.presentation.screens.favourite_screen.component.FavouriteScreen
 import com.eritlab.jexmon.presentation.screens.products.ProductsHome
 import com.eritlab.jexmon.presentation.screens.profile_screen.component.ProfileScreen
@@ -65,6 +66,14 @@ fun HomeNavGraph(navHostController: NavHostController) {
 
             )
         }
+        composable(ShopHomeScreen.DonMuaScreen.route){
+            DonMua (
+                navController = navHostController,
+                onBackBtnClick = { navHostController.popBackStack() },
+
+                )
+        }
+
 
         composable(ShopHomeScreen.ConversationScreen.route) {
             ConversationScreen(

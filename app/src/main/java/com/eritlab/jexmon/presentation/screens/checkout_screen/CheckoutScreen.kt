@@ -88,6 +88,7 @@ fun CheckoutScreen(
 
     val selectedVoucher by viewModel.selectedVoucher.collectAsState()
     val scaffoldState = rememberScaffoldState()
+    val aftertotal by viewModel.aftertotal
     val discountproduct by viewModel.discountproduct
     val fianltotal = discountproduct * (1 - discount / 100)*discountproduct
     val voucherDiscount = if (selectedVoucher != null) {
@@ -244,7 +245,7 @@ fun CheckoutScreen(
             }
             item {
                 chiTietThanhToan(
-                    total = discountproduct,
+                    total = aftertotal,
                     discount = voucherDiscount,
                     shippingFee = shippingFee,
                 )
@@ -280,7 +281,7 @@ fun CheckoutScreen(
                     }
                 },
                 total = discountproduct,
-                shippingFee = shippingFee,
+                dis = aftertotal,
                 discount = voucherDiscount
             )
 
@@ -290,11 +291,11 @@ fun CheckoutScreen(
 fun ShopeeFooter(
     onClick: () -> Unit,
     total: Double,
-    shippingFee: Double,
+    dis: Double,
     discount: Double
 ) {
-    val finalAmount = total + shippingFee - (total * discount / 100)
-    val savedAmount = total * discount / 100
+    val finalAmount = total - (total / 100 * discount)
+
 
     Row(
         modifier = Modifier
@@ -318,7 +319,7 @@ fun ShopeeFooter(
                 color = Color.Red
             )
             Text(
-                text = "Tiết kiệm ${formatCurrency(savedAmount)}",
+                text = "Tiết kiệm ${formatCurrency(dis * discount / 100)}",
                 fontSize = 12.sp,
                 color = Color.Red
             )
@@ -367,7 +368,7 @@ fun chiTietThanhToan(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(text = "Tổng", fontSize = 14.sp)
-            Text(text = formatCurrency(total), fontSize = 14.sp)
+            Text(text = formatCurrency(total ), fontSize = 14.sp)
         }
 
         // Phí vận chuyển
@@ -397,7 +398,7 @@ fun chiTietThanhToan(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(text = "Tổng cộng Voucher Đã Giảm Giá ", fontSize = 14.sp)
-            Text(text =  "-" +  formatCurrency(total*discount/100), fontSize = 14.sp)
+            Text(text =  "-" +  formatCurrency((total / 100 * discount)), fontSize = 14.sp)
 
         }
 
@@ -421,7 +422,7 @@ fun chiTietThanhToan(
                 color = Color.Black
             )
             Text(
-                text = formatCurrency(total - (total*discount/100)),
+                text = formatCurrency(total - (total / 100 * discount)),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.Red

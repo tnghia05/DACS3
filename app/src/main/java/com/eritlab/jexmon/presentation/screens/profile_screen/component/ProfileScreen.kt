@@ -4,14 +4,21 @@ import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
-import androidx.compose.material.icons.Icons
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
@@ -20,23 +27,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.AlignmentLine
-import androidx.compose.ui.modifier.modifierLocalConsumer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ConstraintLayout
-import androidx.constraintlayout.compose.HorizontalAnchorable
-import androidx.navigation.NavController
 import androidx.navigation.NavHostController
-import com.eritlab.jexmon.presentation.common.component.DefaultBackArrow
-import com.eritlab.jexmon.presentation.ui.theme.TextColor
 import com.eritlab.jexmon.R
-import com.eritlab.jexmon.presentation.graphs.Graph
+import com.eritlab.jexmon.presentation.common.component.DefaultBackArrow
 import com.eritlab.jexmon.presentation.graphs.admin_graph.AdminScreen
+import com.eritlab.jexmon.presentation.graphs.home_graph.ShopHomeScreen
 import com.eritlab.jexmon.presentation.ui.theme.PrimaryColor
+import com.eritlab.jexmon.presentation.ui.theme.TextColor
 import com.google.firebase.auth.FirebaseAuth
 
 @Composable
@@ -141,7 +143,14 @@ fun ProfileScreen(
         // Các mục khác
         ProfileOption(icon = R.drawable.user_icon, label = "Profile Picture") { }
         Spacer(modifier = Modifier.height(15.dp))
-        ProfileOption(icon = R.drawable.bell, label = "Notification") { }
+        ProfileOption(icon = R.drawable.bell, label = "Đơn Mua",
+            onClick ={
+                Log.d("Navigation", "🟢 Clicked on Đơn Mua")
+                navController.navigate(ShopHomeScreen.DonMuaScreen.route) {
+                }
+
+            }
+        )
         Spacer(modifier = Modifier.height(15.dp))
         ProfileOption(icon = R.drawable.settings, label = "Settings") { }
         Spacer(modifier = Modifier.height(15.dp))
