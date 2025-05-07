@@ -2,13 +2,16 @@ package com.eritlab.jexmon.domain.model
 
 import com.google.firebase.Timestamp
 
-data class ReviewModel (
+data class ReviewModel(
     val id: String = "",
+    val productId: String = "",
     val userId: String = "",
     val userName: String = "",
-    val imageUrls: List<String>? = null, // <-- Thêm trường này để lưu DANH SÁCH URL ảnh (List<String>). Dùng '?' và '= null' nếu ảnh là tùy chọn.
-    val productId: String = "",
-    val rating: Int = 0, // 1 - 5 sao
+    val rating: Int = 0,
     val comment: String = "",
-    val createdAt: Timestamp = Timestamp.now()
+    val createdAt: com.google.firebase.Timestamp = com.google.firebase.Timestamp.now(),
+    val images: List<String>? = null,
+    val productVariant: String? = null, // e.g. "CP1 Pro 4MP"
+    val helpfulCount: Int = 0,
+    val userAvatar: String? = null
 )
