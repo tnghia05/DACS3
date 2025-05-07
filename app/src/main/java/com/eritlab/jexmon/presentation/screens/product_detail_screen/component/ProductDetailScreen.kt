@@ -1,13 +1,12 @@
 package com.eritlab.jexmon.presentation.screens.product_detail_screen.component
 
 // ... các imports khác từ Jetpack Compose, Material ...
-import android.Manifest
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -15,10 +14,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -41,8 +38,6 @@ import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -67,7 +62,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
@@ -81,8 +75,6 @@ import com.eritlab.jexmon.presentation.ui.theme.PrimaryColor
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Locale
 
 @Composable
 fun ProductDetailScreen(
@@ -137,6 +129,7 @@ fun ProductDetailContent(
             Log.e("ProductDetailScreen", "Lỗi: productId rỗng hoặc null!")
         }
     }
+
 
     val currentUser = FirebaseAuth.getInstance().currentUser // Lấy User Auth hiện tại
     val currentUserId = currentUser?.uid // UID người dùng (String?)
@@ -226,7 +219,7 @@ fun ProductDetailContent(
             ) {
                 Column(
                     modifier = Modifier.fillMaxWidth()
-                       .height(700.dp)
+                        .height(800.dp)
                         .verticalScroll(scrollState),  // Cuộn mượt mà không bị lỗi                    ,
 
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -259,7 +252,7 @@ fun ProductDetailContent(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = String.format("%.1f", product.rating), //định dạng hiển thị 1 số thập phân sau dấu phẩy
+                                text = String.format("%.2f", product.rating),
                                 fontWeight = FontWeight.Bold,
                                 color = Color.Black
                             )
@@ -326,7 +319,7 @@ fun ProductDetailContent(
                             // Giá giảm
                             Text(
                                 text = "${String.format("%,d", discountedPrice.toLong())}đ",
-                                fontSize = 23.sp,
+                                fontSize = 30.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFFD0011B) // Màu đỏ
                             )
@@ -334,29 +327,27 @@ fun ProductDetailContent(
                             // Giá gốc (gạch ngang)
                             Text(
                                 text = "${String.format("%,d", product.price.toLong())}đ",
-                                fontSize = 15.sp,
+                                fontSize = 18.sp,
                                 color = Color.Gray,
                                 textDecoration = TextDecoration.LineThrough // Gạch ngang giá gốc
                             )
 
                             // Phần trăm giảm giá
-//                            Text(
-//                                text = "-${discountText}",
-//                                fontSize = 18.sp,
-//                                fontWeight = FontWeight.Bold,
-//                                color = Color(0xFFFF8800) // Màu cam
-//                            )
+                            Text(
+                                text = "-${discountText}",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFFF8800) // Màu cam
+                            )
 
 
                             Spacer(modifier = Modifier.weight(1f)) // Đẩy "Đã bán" sang bên phải
 
                             // Đã bán
                             Text(
-                                text = "Đã bán ${product.sold}",
-                                fontSize = 14.sp,
-                                color = Color.Black,
-                                fontWeight = FontWeight.Bold
-
+                                text = "Đã bbán ${product.sold}",
+                                fontSize = 16.sp,
+                                color = Color.Gray
                             )
 
                         }
@@ -367,7 +358,7 @@ fun ProductDetailContent(
                         Text(
                             text = product.name,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 20.sp
+                            fontSize = 25.sp
                         )
                         Divider(
                             color = Color.LightGray, // Màu viền
@@ -384,7 +375,7 @@ fun ProductDetailContent(
                         ) {
                             Text(
                                 text = if (isExpanded) product.description else "${product.description.take(100)}...",
-                                fontSize = 15.5.sp,
+                                fontSize = 19.sp,
                                 color = MaterialTheme.colors.onSurface,
                                 modifier = Modifier.weight(1f) // Cho phép chiếm phần lớn diện tích
                             )
@@ -407,6 +398,7 @@ fun ProductDetailContent(
                                     tint = MaterialTheme.colors.PrimaryColor,
                                     modifier = Modifier.rotate(if (isExpanded) 90f else 0f)
                                 )
+                                
                             }
                         }
                         Divider(
@@ -416,73 +408,31 @@ fun ProductDetailContent(
                         )
 
                         Column {
+
+
                             Spacer(modifier = Modifier.height(4.dp)) // Khoảng cách nhỏ
 
-                            Row(
-                                verticalAlignment = Alignment.Top, // Cho icon và chữ căn hàng trên cùng
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                // Icon bên trái
+                            Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
-                                    painter = painterResource(id = R.drawable.ship),
+                                    painter = painterResource(id = R.drawable.ship), // Icon giao hàng
                                     contentDescription = "Shipping Icon",
-                                    tint = Color(0xFF4CAF50),
-                                    modifier = Modifier
-                                        .size(18.dp)
-                                        .padding(top = 2.dp) // Căn chỉnh nhỏ nếu cần
+                                    tint = Color(0xFF4CAF50), // Màu xanh lá
+                                    modifier = Modifier.size(18.dp)
                                 )
 
-                                Spacer(modifier = Modifier.width(8.dp)) // Khoảng cách giữa icon và nội dung
+                                Spacer(modifier = Modifier.width(4.dp))
 
-                                // Nội dung chữ bên phải
-                                Column {
-                                    Text(
-                                        text = "Nhận từ 25 Th03 - 25 Th03",
-                                        fontSize = 16.sp,
-                                        color = Color.Black
-                                    )
-
-                                    Text(
-                                        text = "Miễn phí vận chuyển",
-                                        fontSize = 16.sp,
-                                        color = Color.Black
-                                    )
-
-                                    Text(
-                                        text = "Tặng Voucher đ15.000 nếu đơn giao sau thời gian trên.",
-                                        fontSize = 14.sp,
-                                        color = Color.Gray
-                                    )
-                                }
+                                Text(
+                                    text = "Nhận từ 25 Th03 - 25 Th03, phí giao đ0",
+                                    fontSize = 19.sp,
+                                    color = Color.Black
+                                )
                             }
-                        }
 
-                        Divider(
-                            color = Color.LightGray, // Màu viền
-                            thickness = 0.5.dp, // Độ dày viền
-                            modifier = Modifier.padding(vertical = 10.dp)
-                        )
-
-                        Row(
-                            verticalAlignment = Alignment.Top, // Cho icon và chữ căn hàng trên cùng
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            // Icon bên trái
-                            Image(
-                                painter = painterResource(id = R.drawable.icon_doi_tra_hang),
-                                contentDescription = "Return Package Icon",
-                                modifier = Modifier
-                                    .size(21.dp)
-                                    .padding(top = 2.dp) // Căn chỉnh nhỏ nếu cần
-                            )
-
-                            Spacer(modifier = Modifier.width(8.dp)) // Khoảng cách giữa icon và nội dung
-
-                            // Nội dung chữ bên phải
                             Text(
-                                text = "Trả hàng miễn phí 15 ngày",
+                                text = "Tặng Voucher đ15.000 nếu đơn giao sau thời gian trên.",
                                 fontSize = 16.sp,
-                                color = Color.Black
+                                color = Color.Gray
                             )
                         }
 
@@ -491,215 +441,301 @@ fun ProductDetailContent(
                             thickness = 0.5.dp, // Độ dày viền
                             modifier = Modifier.padding(vertical = 10.dp)
                         )
-
-
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
-                                text = String.format("%.1f", product.rating), //định dạng hiển thị 1 số thập phân sau dấu phẩy
+                                text = String.format("%.2f", product.rating),
                                 fontWeight = FontWeight.Bold,
-                                color = Color.Black,
-                                fontSize = 20.sp,
-
+                                color = Color.Black
                             )
-
-                            Spacer(modifier = Modifier.width(6.dp))
                             Image(
                                 painter = painterResource(id = R.drawable.star_icon),
                                 contentDescription = null
                             )
 
-                            Spacer(modifier = Modifier.width(6.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
 
                             Text(
                                 text = "Đánh Giá Sản Phẩm",
-                                fontSize = 14.5.sp,
+                                fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.Black
                             )
 
                             Spacer(modifier = Modifier.width(4.dp))
 
-                            Text(
-                                // *Cải tiến:* Sử dụng kích thước thực tế của danh sách đánh giá từ state
-                                // Thay vì số cứng "(206)"
-                                text = "(${state.reviews.size})",
-                                fontSize = 14.5.sp,
-                                color = Color.Black
-                            )
+                            if (!state.isLoadingReviews) {
+                                Text(
+                                    text = "(${state.reviews.size})",
+                                    fontSize = 17.sp,
+                                    color = Color.Gray
+                                )
+                            } else {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            }
 
-                            Spacer(modifier = Modifier.weight(1f)) // Đẩy Text "Tất cảaa >" sang phải
+                            Spacer(modifier = Modifier.weight(1f))
 
-                            // Gắn clickable modifier vào Text "Tất cảaa >"
                             Text(
                                 text = "Tất cả >",
-                                fontSize = 14.sp,
+                                fontSize = 17.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = Color.Gray,
                                 modifier = Modifier.clickable {
-                                    // Khi bấm vào Text này, đảo ngược trạng thái hiển thị phần đánh giá
                                     showReviewsSection = !showReviewsSection
-                                    // *Lưu ý:* Nếu bạn chọn chỉ tải bình luận khi bấm lần đầu,
-                                    // thì gọi viewModel.getReviews(productId) ở đây nếu showReviewsSection vừa chuyển sang true.
-                                    // Tuy nhiên, tải ngay khi load màn hình thường cho trải nghiệm tốt hơn.
                                 }
                             )
                         }
-                        if (showReviewsSection) {
-                            // Logic hiển thị danh sách bình luận dựa vào state.reviews
-                            // Bao gồm xử lý loading, error, empty list
-                            when {
-                                state.isLoadingReviews -> {
-                                    CircularProgressIndicator() // Hoặc Text("Đang tải bình luận...")
-                                }
-                                state.errorLoadingReviews != null -> {
-                                    Text("Lỗi tải bình luận: ${state.errorLoadingReviews}")
-                                }
-                                state.reviews.isEmpty() -> {
-                                    // Chỉ hiển thị nếu không trong trạng thái loading hoặc error
-                                    if (!state.isLoadingReviews && state.errorLoadingReviews == null) {
-                                        Text("Chưa có bình luận nào cho sản phẩm này.")
-                                        Button(
-                                            onClick = { showReviewInputForm = !showReviewInputForm }, // Bấm để đóng/mở form nhập liệu
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(horizontal = 16.dp) // Thêm padding ngang
-                                        ) {
-                                            Text(if (showReviewInputForm) "Ẩn Form Viết Đánh Giá" else "Viết đánh giá")
-                                        }
-                                    }
-                                }
-                                else -> {
-                                    // Hiển thị danh sách bình luận thực tế
-                                    Column { // Cân nhắc LazyColumn nếu danh sách dài
-                                        state.reviews.forEach { review ->
-                                            ReviewItem(review = review) // Composable hiển thị 1 bình luận
-                                            Divider()
-                                        }
-                                        Button(
-                                            onClick = { showReviewInputForm = !showReviewInputForm }, // Bấm để đóng/mở form nhập liệu
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(horizontal = 16.dp) // Thêm padding ngang
-                                        ) {
-                                            Text(if (showReviewInputForm) "Ẩn Form Viết Đánh Giá" else "Viết đánh giá")
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                    }
 
-                        Spacer(modifier = Modifier.height(8.dp)) // Khoảng cách
+                    // Reviews section
+                    if (!state.isLoadingReviews) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
+                        ) {
+                            var showAllReviews by remember { mutableStateOf(false) }
+                            var showReviewInputForm by remember { mutableStateOf(false) }
+                            val reviewsToShow = if (showAllReviews) state.reviews else state.reviews.take(3)
 
-                        // --- GỌI COMposable ReviewInputForm DƯỚI ĐÂY (điều kiện) ---
-                        if (showReviewInputForm) {
-                            val currentProductId = state.productDetail?.id ?: ""
-
-                            // --- XÁC ĐỊNH TÊN TÁC GIẢ ĐỂ TRUYỀN VÀO FORM ---
-                            // Logic này chạy mỗi khi Composable recompose, sử dụng giá trị MỚI NHẤT của các nguồn tên.
-                            val authorNameToShow = when {
-                                // 1. Ưu tiên tên lấy từ Callback và lưu trong State CỤC BỘ này (nếu có và không rỗng)
-                                // Giá trị này được cập nhật bởi LaunchedEffect.
-                                !fetchedNameFromCallback.isNullOrBlank() -> fetchedNameFromCallback!! // !! an toàn sau isNullOrBlank()
-                                // 2. Nếu tên từ callback là null/rỗng, thử dùng tên hiển thị từ Firebase Auth
-                                !currentUser?.displayName.isNullOrBlank() -> currentUser!!.displayName!! // !! an toàn sau isNullOrBlank
-                                // 3. Cuối cùng, nếu cả hai cách trên đều không có tên, dùng tên mặc định
-                                else -> "Người dùng ẩn danh"
-                            }
-
-                            // Kiểm tra điều kiện CHÍNH để hiển thị Form
-                            if (currentProductId.isNotBlank() && currentUserId != null) {
-                                Log.d("ProductDetail", "Showing Review Input Form for Product: $currentProductId, User ID: $currentUserId")
-                                Log.d("ProductDetail", "Using Author Name: $authorNameToShow") // Log tên đã xác định
-
-                                ReviewInputForm(
-                                    viewModel = viewModel,
-                                    productId = currentProductId,
-                                    userId = currentUserId,
-                                    authorName = authorNameToShow // Truyền tên đã xác định (đã xử lý null)
+                            // Write Review Button at the top
+                            Button(
+                                onClick = { showReviewInputForm = !showReviewInputForm },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    backgroundColor = Color.White,
+                                    contentColor = MaterialTheme.colors.PrimaryColor
+                                ),
+                                border = BorderStroke(1.dp, MaterialTheme.colors.PrimaryColor),
+                                elevation = ButtonDefaults.elevation(
+                                    defaultElevation = 0.dp,
+                                    pressedElevation = 0.dp
                                 )
-                            } else {
-                                // Nếu một trong hai (hoặc cả hai) điều kiện trên KHÔNG đúng, HIỂN THỊ THÔNG BÁO
-                                Log.d("ProductDetail", "Conditions NOT met to show Review Input Form. Product ID Blank: ${currentProductId.isBlank()}, User ID Null: ${currentUserId == null}")
+                            ) {
+                                Row(
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.log_out),
+                                        contentDescription = "Write Review",
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = if (showReviewInputForm) "Đóng form đánh giá" else "Viết đánh giá",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
 
-                                Text(
-                                    // Hiển thị thông báo phù hợp dựa trên lý do tại sao không hiển thị form
-                                    text = when {
-                                        currentProductId.isBlank() -> "Không thể tải thông tin sản phẩm để viết đánh giá." // Thiếu Product ID
-                                        currentUserId == null -> "Vui lòng đăng nhập để viết đánh giá." // Thiếu User ID
-                                        else -> "Không thể hiển thị form đánh giá." // Trường hợp khác (ít xảy ra với logic trên)
-                                    },
-                                    color = Color.Gray,
+                            // Review Input Form
+                            if (showReviewInputForm) {
+                                val currentUser = FirebaseAuth.getInstance().currentUser
+                                if (currentUser != null) {
+                                    ReviewInputForm(
+                                        viewModel = viewModel,
+                                        productId = product.id,
+                                        userId = currentUser.uid,
+                                        authorName = currentUser.displayName ?: "Người dùng"
+                                    )
+                                } else {
+                                    Text(
+                                        text = "Vui lòng đăng nhập để viết đánh giá",
+                                        color = Color.Gray,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            }
+
+                            // Existing reviews
+                            reviewsToShow.forEach { review ->
+                                ReviewItem(review = review)
+                            }
+
+                            // Show More/Less buttons (existing code)
+                            if (state.reviews.size > 3 && !showAllReviews) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Button(
+                                    onClick = { showAllReviews = true },
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(16.dp),
-                                    textAlign = TextAlign.Center
-                                )
+                                        .padding(vertical = 8.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        backgroundColor = Color.White,
+                                        contentColor = MaterialTheme.colors.PrimaryColor
+                                    ),
+                                    border = BorderStroke(1.dp, MaterialTheme.colors.PrimaryColor),
+                                    elevation = ButtonDefaults.elevation(
+                                        defaultElevation = 0.dp,
+                                        pressedElevation = 0.dp
+                                    )
+                                ) {
+                                    Row(
+                                        horizontalArrangement = Arrangement.Center,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "Xem thêm ${state.reviews.size - 3} đánh giá",
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Icon(
+                                            painter = painterResource(id = R.drawable.arrow_right),
+                                            contentDescription = "Show More",
+                                            modifier = Modifier
+                                                .size(16.dp)
+                                                .rotate(90f)
+                                        )
+                                    }
+                                }
+                            }
+
+                            if (showAllReviews && state.reviews.size > 3) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Button(
+                                    onClick = { showAllReviews = false },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 8.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        backgroundColor = Color.White,
+                                        contentColor = MaterialTheme.colors.PrimaryColor
+                                    ),
+                                    border = BorderStroke(1.dp, MaterialTheme.colors.PrimaryColor),
+                                    elevation = ButtonDefaults.elevation(
+                                        defaultElevation = 0.dp,
+                                        pressedElevation = 0.dp
+                                    )
+                                ) {
+                                    Row(
+                                        horizontalArrangement = Arrangement.Center,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "Thu gọn",
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Icon(
+                                            painter = painterResource(id = R.drawable.arrow_right),
+                                            contentDescription = "Show Less",
+                                            modifier = Modifier
+                                                .size(16.dp)
+                                                .rotate(-90f)
+                                        )
+                                    }
+                                }
                             }
                         }
+                    } else {
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
 
+                    Spacer(modifier = Modifier.height(8.dp)) // Khoảng cách
 
+                    // --- GỌI COMposable ReviewInputForm DƯỚI ĐÂY (điều kiện) ---
+                    if (showReviewInputForm) {
+                        val currentProductId = state.productDetail?.id ?: ""
 
+                        // --- XÁC ĐỊNH TÊN TÁC GIẢ ĐỂ TRUYỀN VÀO FORM ---
+                        // Logic này chạy mỗi khi Composable recompose, sử dụng giá trị MỚI NHẤT của các nguồn tên.
+                        val authorNameToShow = when {
+                            // 1. Ưu tiên tên lấy từ Callback và lưu trong State CỤC BỘ này (nếu có và không rỗng)
+                            // Giá trị này được cập nhật bởi LaunchedEffect.
+                            !fetchedNameFromCallback.isNullOrBlank() -> fetchedNameFromCallback!! // !! an toàn sau isNullOrBlank()
+                            // 2. Nếu tên từ callback là null/rỗng, thử dùng tên hiển thị từ Firebase Auth
+                            !currentUser?.displayName.isNullOrBlank() -> currentUser!!.displayName!! // !! an toàn sau isNullOrBlank
+                            // 3. Cuối cùng, nếu cả hai cách trên đều không có tên, dùng tên mặc định
+                            else -> "Người dùng ẩn danh"
+                        }
+
+                        // Kiểm tra điều kiện CHÍNH để hiển thị Form
+                        if (currentProductId.isNotBlank() && currentUserId != null) {
+                            Log.d("ProductDetail", "Showing Review Input Form for Product: $currentProductId, User ID: $currentUserId")
+                            Log.d("ProductDetail", "Using Author Name: $authorNameToShow") // Log tên đã xác định
+
+                            ReviewInputForm(
+                                viewModel = viewModel,
+                                productId = currentProductId,
+                                userId = currentUserId,
+                                authorName = authorNameToShow // Truyền tên đã xác định (đã xử lý null)
+                            )
+                        } else {
+                            // Nếu một trong hai (hoặc cả hai) điều kiện trên KHÔNG đúng, HIỂN THỊ THÔNG BÁO
+                            Log.d("ProductDetail", "Conditions NOT met to show Review Input Form. Product ID Blank: ${currentProductId.isBlank()}, User ID Null: ${currentUserId == null}")
+
+                            Text(
+                                // Hiển thị thông báo phù hợp dựa trên lý do tại sao không hiển thị form
+                                text = when {
+                                    currentProductId.isBlank() -> "Không thể tải thông tin sản phẩm để viết đánh giá." // Thiếu Product ID
+                                    currentUserId == null -> "Vui lòng đăng nhập để viết đánh giá." // Thiếu User ID
+                                    else -> "Không thể hiển thị form đánh giá." // Trường hợp khác (ít xảy ra với logic trên)
+                                },
+                                color = Color.Gray,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                 }
             }
 
-            //Nút thêm vào giỏ hàng và mua ngay
-            Row(
+            // 🔹 Nút thêm vào giỏ hàng
+            // 🔹 Nút thêm vào giỏ hàng
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
-                    .height(56.dp) // ✅ Tăng chiều cao nút lên
+                    .background(Color.White)
+                    .padding(16.dp)
             ) {
-                // 🔹 Nút "Thêm vào giỏ hàng" (chiếm 2 phần)
                 Button(
                     onClick = {
                         isSheetOpen = true
-                        coroutineScope.launch { sheetState.show() }
+                        coroutineScope.launch {
+                            sheetState.show()
+                        }
                     },
                     colors = ButtonDefaults.buttonColors(
-                        backgroundColor = Color(0xFF26A69A),
+                        backgroundColor = MaterialTheme.colors.PrimaryColor,
                         contentColor = Color.White
                     ),
-                    shape = RoundedCornerShape(topStart = 15.dp, bottomStart = 15.dp),
-                    contentPadding = PaddingValues(0.dp),
                     modifier = Modifier
-                        .weight(2f)
-                        .fillMaxHeight() // ✅ Đảm bảo chiếm hết chiều cao Row
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .clip(RoundedCornerShape(15.dp))
                 ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.cart),
-                        contentDescription = "Giỏ hàng",
-                        modifier = Modifier.size(24.dp)
+                    Text(
+                        text = "Thêm vào giỏ hàng - ${String.format("%,d", product.price.toLong())}đ",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
                     )
                 }
-
-                // 🔹 Nút "Mua với voucher" (chiếm 3 phần)
-                Button(
-                    onClick = {
-                        // Action mua hàng
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        backgroundColor = Color(0xFFE53935),
-                        contentColor = Color.White
-                    ),
-                    shape = RoundedCornerShape(topEnd = 15.dp, bottomEnd = 15.dp),
-                    modifier = Modifier
-                        .weight(3f)
-                        .fillMaxHeight()
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Mua với voucher", fontSize = 14.sp)
-                        Text("₫363.636", fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
             }
-
-
-
+        
         }
+
 
             // day khong lien quan
         if (isSheetOpen) {
@@ -873,7 +909,7 @@ fun BottomSheetContent(
             thickness = 0.5.dp, // Độ dày viền
             modifier = Modifier.padding(vertical = 10.dp)
         )
-        Text("Chọn Size", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        Text("Chọn Sizee", fontWeight = FontWeight.Bold, fontSize = 16.sp)
         LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             items(availableSizes) { size ->
                 Box(
@@ -931,7 +967,7 @@ fun BottomSheetContent(
         ) {
             Text("Chọn Số Lượng:", fontWeight = FontWeight.Bold, fontSize = 16.sp)
 
-            Spacer(modifier = Modifier.width(100.dp)) // Tạo khoảng cách nhỏ giữa text và nút
+            Spacer(modifier = Modifier.width(150.dp)) // Tạo khoảng cách nhỏ giữa text và nút
 
             IconButton(onClick = { if (quantity > 1) quantity-- }) {
                 Image(painter = painterResource(id = R.drawable.remove), contentDescription = null)
@@ -1003,97 +1039,119 @@ fun BottomSheetContent(
 
 // 🔹 Composable để hiển thị một mục bình luận (Sử dụng ReviewModel)
 @Composable
-fun ReviewItem(review: ReviewModel) { // Nhận ReviewModel
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            // Ảnh đại diện người dùng (sử dụng ImageUrl)
+fun ReviewItem(review: ReviewModel) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+    ) {
+        // User info row with avatar, name, and rating
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Avatar
             Image(
-                painter = rememberAsyncImagePainter( R.drawable.user), // Thay R.drawable.default_avatar bằng ảnh default của bạn
+                painter = rememberAsyncImagePainter(R.drawable.user),
                 contentDescription = "User Avatar",
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(35.dp)
                     .clip(CircleShape)
                     .background(Color.Gray)
             )
+            
             Spacer(modifier = Modifier.width(8.dp))
+            
+            // Name and rating in a column
             Column {
                 Text(
                     text = review.userName,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
+                    fontSize = 14.sp,
+                    color = Color.Black,
+                    fontWeight = FontWeight.Medium
                 )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Hiển thị số sao đánh giá
+                
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(top = 2.dp)
+                ) {
                     repeat(5) { index ->
                         Icon(
-                            painter = painterResource(id = if (index < review.rating) R.drawable.star_icon else R.drawable.star__1_),
+                            painter = painterResource(
+                                id = if (index < review.rating) R.drawable.star_icon 
+                                else R.drawable.star__1_
+                            ),
                             contentDescription = "Star Rating",
                             tint = if (index < review.rating) Color(0xFFFFC107) else Color.Gray,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(12.dp)
                         )
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    // Hiển thị thời gian bình luận (chuyển Timestamp sang Date)
-                    val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
-                    Text(
-                        text = dateFormat.format(review.createdAt.toDate()), // Chuyển Timestamp sang Date để format
-                        fontSize = 12.sp,
-                        color = Color.Gray
+                }
+            }
+        }
+
+        // Review content with proper spacing
+        if (review.comment.isNotEmpty()) {
+            Text(
+                text = review.comment,
+                fontSize = 14.sp,
+                color = Color.Black,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
+
+        // Images in a row (if any)
+        if (!review.images.isNullOrEmpty()) {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(top = 8.dp)
+            ) {
+                items(review.images) { imageUrl ->
+                    AsyncImage(
+                        model = imageUrl,
+                        contentDescription = "Review Image",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(90.dp)
+                            .clip(RoundedCornerShape(4.dp))
                     )
                 }
             }
         }
-        Spacer(modifier = Modifier.height(8.dp))
-        // Nội dung bình luận
-        Text(
-            text = review.comment,
-            fontSize = 15.sp,
-            color = Color.Black
+
+        Divider(
+            color = Color.LightGray.copy(alpha = 0.5f),
+            thickness = 0.5.dp,
+            modifier = Modifier.padding(top = 12.dp)
         )
-        Spacer(modifier = Modifier.height(12.dp))
-        Divider(color = Color.LightGray, thickness = 0.5.dp)
     }
-}@Composable
+}
+
+@Composable
 fun ReviewInputForm(
-    viewModel: ProductDetailViewModel, // Truyền ViewModel vào
-    productId: String, // ID sản phẩm hiện tại
-    userId: String, // ID người dùng hiện tại (lấy từ Firebase Auth)
-    authorName: String // Tên người dùng hiện tại
+    viewModel: ProductDetailViewModel,
+    productId: String,
+    userId: String,
+    authorName: String
 ) {
-    // --- Trạng thái UI cho Form nhập liệu ---
     var reviewContent by remember { mutableStateOf("") }
-    var selectedRating by remember { mutableStateOf(0) } // 0 sao ban đầu
+    var selectedRating by remember { mutableStateOf(0) }
     var selectedImageUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
-
-    val reviewSubmissionState = viewModel.reviewSubmissionState.value // Lấy trạng thái gửi từ ViewModel
-
+    val reviewSubmissionState = viewModel.reviewSubmissionState.value
     val context = LocalContext.current
 
-    // Launcher để chọn nhiều ảnh
+    // Image picker launcher
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetMultipleContents()
     ) { uris: List<Uri> ->
-        selectedImageUris = uris // Cập nhật danh sách Uri ảnh đã chọn
+        selectedImageUris = uris
     }
 
-    // Launcher để yêu cầu quyền đọc bộ nhớ (nếu cần thiết cho API level cũ hơn)
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted: Boolean ->
-        if (isGranted) {
-            imagePickerLauncher.launch("image/*") // Nếu được cấp quyền, mở trình chọn ảnh
-        } else {
-            // Xử lý khi người dùng từ chối quyền
-            // Có thể hiển thị SnackBar hoặc Dialog thông báo
-        }
-    }
-
-    // --- Giao diện Form ---
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
-            .border(1.dp, Color.Gray, RoundedCornerShape(8.dp)) // Thêm viền cho dễ nhìn
+            .border(1.dp, Color.LightGray, RoundedCornerShape(8.dp))
             .padding(16.dp)
     ) {
         Text(
@@ -1106,22 +1164,23 @@ fun ReviewInputForm(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Chọn số sao
+        // Star rating selection
         Text("Chọn số sao:", fontWeight = FontWeight.Medium)
-        Spacer(modifier = Modifier.height(4.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center // Căn giữa các ngôi sao
+            horizontalArrangement = Arrangement.Center
         ) {
             for (i in 1..5) {
                 Icon(
-                    painter = painterResource(id = if (i < selectedRating) R.drawable.star_icon else R.drawable.star__1_),
-
+                    painter = painterResource(
+                        id = if (i <= selectedRating) R.drawable.star_icon 
+                        else R.drawable.star__1_
+                    ),
                     contentDescription = "$i Star",
-                    tint = if (i <= selectedRating) Color(0xFFFFD700) else Color.Gray, // Màu vàng nếu được chọn
+                    tint = if (i <= selectedRating) Color(0xFFFFD700) else Color.Gray,
                     modifier = Modifier
                         .size(32.dp)
-                        .clickable { selectedRating = i } // Bấm để chọn sao
+                        .clickable { selectedRating = i }
                 )
                 if (i < 5) Spacer(modifier = Modifier.width(4.dp))
             }
@@ -1129,96 +1188,119 @@ fun ReviewInputForm(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Nhập nội dung đánh giá
+        // Review content input
         OutlinedTextField(
             value = reviewContent,
             onValueChange = { reviewContent = it },
             label = { Text("Nội dung đánh giá") },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(120.dp) // Chiều cao cho nội dung
+                .height(120.dp),
+            maxLines = 5
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Nút chọn ảnh
+        // Image upload button
         Button(
-            onClick = {
-                // Kiểm tra quyền đọc bộ nhớ trước khi mở trình chọn ảnh
-                when {
-                    ContextCompat.checkSelfPermission(
-                        context,
-                        Manifest.permission.READ_EXTERNAL_STORAGE // Quyền đọc bộ nhớ cũ
-                    ) == PackageManager.PERMISSION_GRANTED -> {
-                        // Quyền đã được cấp, mở trình chọn ảnh
-                        imagePickerLauncher.launch("image/*")
-                    }
-                    // ShouldShowRequestPermissionRationale giải thích lý do cần quyền (tùy chọn)
-                    // ActivityCompat.shouldShowRequestPermissionRationale(...) -> {
-                    //    // Hiển thị dialog giải thích lý do
-                    // }
-                    else -> {
-                        // Yêu cầu quyền
-                        permissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
-                    }
-                }
-                // *Lưu ý:* Với Android 10+ (API 29+), quyền READ_EXTERNAL_STORAGE có thể không cần thiết
-                // nếu bạn chỉ dùng Storage Access Framework (như GetMultipleContents).
-                // Tuy nhiên, kiểm tra quyền vẫn là practice tốt hoặc nếu hỗ trợ API cũ hơn.
-            },
-            modifier = Modifier.fillMaxWidth()
+            onClick = { imagePickerLauncher.launch("image/*") },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(
+                backgroundColor = Color.White,
+                contentColor = MaterialTheme.colors.PrimaryColor
+            ),
+            border = BorderStroke(1.dp, MaterialTheme.colors.PrimaryColor)
         ) {
-            Icon(imageVector = Icons.Default.ExitToApp, contentDescription = "Select Images")
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Chọn ảnh đính kèm (${selectedImageUris.size})")
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.camera_icon),
+                    contentDescription = "Upload Image",
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = if (selectedImageUris.isEmpty()) "Thêm ảnh" 
+                          else "Đã chọn ${selectedImageUris.size} ảnh"
+                )
+            }
         }
 
-        // Hiển thị ảnh đã chọn
+        // Image preview
         if (selectedImageUris.isNotEmpty()) {
             Spacer(modifier = Modifier.height(8.dp))
             LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
                 items(selectedImageUris) { uri ->
-                    AsyncImage(
-                        model = uri, // Uri của ảnh đã chọn
-                        contentDescription = null,
+                    Box(
                         modifier = Modifier
                             .size(80.dp)
-                            .aspectRatio(1f),
-                        contentScale = ContentScale.Crop
-                    )
+                            .clip(RoundedCornerShape(4.dp))
+                    ) {
+                        AsyncImage(
+                            model = uri,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                        // Delete button
+                        IconButton(
+                            onClick = {
+                                selectedImageUris = selectedImageUris.filter { it != uri }
+                            },
+                            modifier = Modifier
+                                .size(24.dp)
+                                .align(Alignment.TopEnd)
+                                .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.close),
+                                contentDescription = "Remove Image",
+                                tint = Color.White,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Nút gửi đánh giá
+        // Submit button
         Button(
             onClick = {
-                // Gọi hàm submitReview trong ViewModel
                 viewModel.submitReview(
                     productId = productId,
-                    userId = userId, // Đảm bảo bạn lấy được userId của người dùng hiện tại
-                    authorName = authorName, // Đảm bảo bạn lấy được tên người dùng
-                    rating = selectedRating, // Chuyển Int rating sang Float
+                    userId = userId,
+                    authorName = authorName,
+                    rating = selectedRating,
                     content = reviewContent,
                     imageUris = selectedImageUris
                 )
             },
             modifier = Modifier.fillMaxWidth(),
-            enabled = !reviewSubmissionState.isSubmitting && selectedRating > 0 && reviewContent.isNotBlank()
-            // Nút chỉ bật khi không đang gửi, đã chọn sao và đã nhập nội dung
+            enabled = !reviewSubmissionState.isSubmitting && selectedRating > 0 && reviewContent.isNotBlank(),
+            colors = ButtonDefaults.buttonColors(
+                backgroundColor = MaterialTheme.colors.PrimaryColor,
+                contentColor = Color.White
+            )
         ) {
             if (reviewSubmissionState.isSubmitting) {
-                CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                CircularProgressIndicator(
+                    color = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
             } else {
                 Text("Gửi đánh giá")
             }
         }
 
-        // Hiển thị trạng thái gửi (thành công, lỗi)
+        // Error message
         reviewSubmissionState.submitError?.let { error ->
             Text(
                 text = error,
@@ -1228,15 +1310,9 @@ fun ReviewInputForm(
                     .padding(top = 8.dp),
                 textAlign = TextAlign.Center
             )
-            // Reset trạng thái lỗi sau khi hiển thị
-            LaunchedEffect(error) {
-                // Bạn có thể dùng SnackBar thay cho Text trực tiếp
-                // Sau một khoảng thời gian, reset state
-                // delay(3000) // Delay 3 giây
-                // viewModel.resetReviewSubmissionState()
-            }
         }
 
+        // Success message
         if (reviewSubmissionState.submitSuccess) {
             Text(
                 text = "Gửi đánh giá thành công!",
@@ -1246,13 +1322,12 @@ fun ReviewInputForm(
                     .padding(top = 8.dp),
                 textAlign = TextAlign.Center
             )
-            // Reset form và trạng thái thành công sau khi hiển thị
-            LaunchedEffect(true) { // Dùng key true để chạy 1 lần khi success là true
-                // delay(3000) // Delay 3 giây
+            
+            LaunchedEffect(true) {
                 reviewContent = ""
                 selectedRating = 0
                 selectedImageUris = emptyList()
-                viewModel.resetReviewSubmissionState() // Reset trạng thái trong ViewModel
+                viewModel.resetReviewSubmissionState()
             }
         }
     }

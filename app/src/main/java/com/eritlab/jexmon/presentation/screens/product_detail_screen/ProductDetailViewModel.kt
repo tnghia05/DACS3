@@ -18,6 +18,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.storage.FirebaseStorage
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
@@ -50,28 +51,15 @@ class ProductDetailViewModel @Inject constructor(
 
     init {
         val productId = stateHandle.get<String>(Constrains.PRODUCT_ID_PARAM) ?: ""
-        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid // Lấy UID của user đang login
+        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
 
         Log.d("ProductDetailViewModel", "Received productId: $productId")
         if (productId.isNotBlank()) {
-            getProductDetail(productId) // Tải thông tin sản phẩm
-            getReviews(productId)       // Tải danh sách bình luận hiện có
-            // Nếu có user đang login, thử lấy tên profile từ Firestore
-            if (currentUserId != null) {
-                viewModelScope.launch {
-                    val fetchedUserName = getUserNameById(currentUserId)
-                    // Lúc này bạn có thể sử dụng fetchedUserName
-                    // Ví dụ: lưu nó vào ProductDetailState để Composable sử dụng
-                    // _state.value = _state.value.copy(currentUserName = fetchedUserName) // Cần thêm currentUserName vào ProductDetailState
-                    Log.d("ViewModel", "Fetched user name from profile: $fetchedUserName")
-
-                    // Bạn có thể dùng tên này khi gọi submitReview từ Composable
-                    // Ví dụ, thay vì truyền authorName từ UI, UI chỉ cần truyền userId
-                    // và submitReview sẽ dùng userId để gọi getUserNameById
-                }
-            } else {
-                // Xử lý trường hợp user chưa login (ví dụ: không cho viết review)
-                Log.d("ViewModel", "User not logged in, cannot fetch profile name.")
+            // Load both product details and reviews together
+            viewModelScope.launch {
+                _state.value = _state.value.copy(isLoading = true)
+                getProductDetail(productId)
+                getReviews(productId)
             }
         } else {
             _state.value = ProductDetailState(errorMessage = "Invalid product ID")
@@ -87,21 +75,74 @@ class ProductDetailViewModel @Inject constructor(
         getProductDetailUseCase(productId).onEach { result ->
             when (result) {
                 is Resource.Loading -> {
-                    _state.value = ProductDetailState(isLoading = true)
+                    _state.value = _state.value.copy(isLoading = true)
                 }
                 is Resource.Success -> {
-                    _state.value = if (result.data != null) {
-                        ProductDetailState(productDetail = result.data)
-                    } else {
-                        ProductDetailState(errorMessage = "Product not found")
-                    }
+                    _state.value = _state.value.copy(
+                        isLoading = false,
+                        productDetail = result.data,
+                        errorMessage = null.toString()
+                    )
                 }
                 is Resource.Error -> {
-                    _state.value = ProductDetailState(errorMessage = result.message ?: "Unknown error")
+                    _state.value = _state.value.copy(
+                        isLoading = false,
+                        errorMessage = result.message ?: "Unknown error"
+                    )
                 }
             }
         }.launchIn(viewModelScope)
     }
+
+    // Hàm tải danh sách bình luận
+    private fun getReviews(productId: String) {
+        if (productId.isBlank()) {
+            Log.w("ProductDetailViewModel", "Product ID is blank, cannot fetch reviews.")
+            _state.value = _state.value.copy(
+                reviews = emptyList(),
+                isLoadingReviews = false,
+                errorLoadingReviews = "Product ID không hợp lệ để tải bình luận."
+            )
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val db = FirebaseFirestore.getInstance()
+                val reviewsCollectionRef = db.collection("reviews")
+
+                val querySnapshot = reviewsCollectionRef
+                    .whereEqualTo("productId", productId)
+                    .orderBy("createdAt", Query.Direction.DESCENDING)
+                    .get()
+                    .await()
+
+                val reviewsList = querySnapshot.documents.mapNotNull { document ->
+                    try {
+                        document.toObject(ReviewModel::class.java)?.copy(id = document.id)
+                    } catch (e: Exception) {
+                        Log.e("ProductDetailViewModel", "Error converting review document: ${document.id}", e)
+                        null
+                    }
+                }
+
+                Log.d("ProductDetailViewModel", "Fetched ${reviewsList.size} reviews for product $productId")
+
+                _state.value = _state.value.copy(
+                    reviews = reviewsList,
+                    isLoadingReviews = false,
+                    errorLoadingReviews = null
+                )
+            } catch (e: Exception) {
+                Log.e("ProductDetailViewModel", "Error fetching reviews for product $productId", e)
+                _state.value = _state.value.copy(
+                    isLoadingReviews = false,
+                    errorLoadingReviews = "Không thể tải bình luận."
+                )
+            }
+        }
+    }
+
     // Hàm getUserNameById sử dụng Callback (KHÔNG dùng suspend)
     fun getUserNameByIdCallback(
         userId: String,
@@ -169,57 +210,6 @@ class ProductDetailViewModel @Inject constructor(
       }
   }
 
-    // Hàm tải danh sách bình luận (Đã đưa ra ngoài hàm getProductDetail)
-    // Hàm tải danh sách bình luận (Chỉnh sửa truy vấn)
-    fun getReviews(productId: String) {
-        if (productId.isBlank()) {
-            Log.w("ProductDetailViewModel", "Product ID is blank, cannot fetch reviews.")
-            _state.value = _state.value.copy(
-                reviews = emptyList(),
-                isLoadingReviews = false,
-                errorLoadingReviews = "Product ID không hợp lệ để tải bình luận."
-            )
-            return
-        }
-        viewModelScope.launch {
-            _state.value = _state.value.copy(isLoadingReviews = true, errorLoadingReviews = null)
-            try {
-                val db = FirebaseFirestore.getInstance()
-                // --- CHỈNH SỬA TRUY VẤN ĐỂ ĐỌC TỪ TOP-LEVEL COLLECTION "reviews" ---
-                val reviewsCollectionRef = db.collection("reviews")
-
-                val querySnapshot = reviewsCollectionRef
-                    .whereEqualTo("productId", productId) // Lọc bình luận theo productId
-                    .orderBy("createdAt", Query.Direction.DESCENDING) // Sắp xếp
-                    .get()
-                    .await() // Đợi kết quả
-
-                val reviewsList = querySnapshot.documents.mapNotNull { document ->
-                    try {
-                        // Mapping sang ReviewModel. Đảm bảo ReviewModel khớp với cấu trúc Firestore
-                        document.toObject(ReviewModel::class.java)?.copy(id = document.id)
-                    } catch (e: Exception) {
-                        Log.e("ProductDetailViewModel", "Error converting review document: ${document.id}", e)
-                        null // Bỏ qua document bị lỗi
-                    }
-                }
-
-                _state.value = _state.value.copy(
-                    reviews = reviewsList,
-                    isLoadingReviews = false,
-                    errorLoadingReviews = null
-                )
-            } catch (e: Exception) {
-                Log.e("ProductDetailViewModel", "Error fetching reviews for product $productId", e)
-                _state.value = _state.value.copy(
-                    reviews = emptyList(),
-                    isLoadingReviews = false,
-                    errorLoadingReviews = "Không thể tải bình luận."
-                )
-            }
-        }
-    }
-
     // Hàm thêm sản phẩm vào giỏ hàng
     // Giữ nguyên cấu trúc Flow<Result<Unit>> như bạn đã có
     fun addToCart(cartItem: CartItem): Flow<Result<Unit>> = flow {
@@ -279,59 +269,79 @@ class ProductDetailViewModel @Inject constructor(
         authorName: String,
         rating: Int,
         content: String,
-        imageUris: List<Uri>
+        imageUris: List<Uri>,
+        productVariant: String? = null
     ) {
-        if (productId.isBlank() || userId.isBlank() || authorName.isBlank() || rating < 1 || content.isBlank()) {
-            _reviewSubmissionState.value = ReviewSubmissionState(submitError = "Vui lòng nhập đủ thông tin đánh giá (sao, nội dung).")
-            return
-        }
-
         viewModelScope.launch {
-            _reviewSubmissionState.value = ReviewSubmissionState(isSubmitting = true, submitError = null, submitSuccess = false)
-            val storage = FirebaseStorage.getInstance()
-            val db = FirebaseFirestore.getInstance()
-            val imageUrls = mutableListOf<String>()
-
             try {
-                // 1. Tải ảnh lên Firebase Storage (logic giữ nguyên)
-                for (uri in imageUris) {
-                    val fileName = UUID.randomUUID().toString()
-                    val ref = storage.reference.child("review_images/${productId}/${userId}/${fileName}")
-                    val uploadTask = ref.putFile(uri)
-                    val downloadUrl = uploadTask.await().storage.downloadUrl.await()
-                    imageUrls.add(downloadUrl.toString())
+                _reviewSubmissionState.value = ReviewSubmissionState(isSubmitting = true)
+                
+                // Upload images first if any
+                val uploadedImageUrls = mutableListOf<String>()
+                if (imageUris.isNotEmpty()) {
+                    val storage = FirebaseStorage.getInstance()
+                    imageUris.forEach { uri ->
+                        val imageRef = storage.reference.child("reviews/${productId}/${System.currentTimeMillis()}_${uri.lastPathSegment}")
+                        val uploadTask = imageRef.putFile(uri)
+                        uploadTask.await()
+                        val downloadUrl = imageRef.downloadUrl.await()
+                        uploadedImageUrls.add(downloadUrl.toString())
+                    }
                 }
 
-                // 2. Tạo đối tượng đánh giá mới (ReviewModel)
-                // ReviewModel của bạn đã có productId, userId, author, rating, content, imageUrls, createdAt
-                val newReview = ReviewModel(
-                    // id sẽ được Firestore tự tạo khi dùng .add()
-                    productId = productId, // <--- Đảm bảo productId được gán vào model
+                // Create review document
+                val review = ReviewModel(
+                    id = UUID.randomUUID().toString(),
+                    productId = productId,
                     userId = userId,
-                    userName = authorName, // Sử dụng userName thay vì author như trong ReviewModel của bạn
-                    rating = rating.toInt(), // Chuyển Float sang Int nếu ReviewModel dùng Int
-                    comment = content, // Sử dụng comment thay vì content như trong ReviewModel của bạn
-                    imageUrls = if (imageUrls.isNotEmpty()) imageUrls else null, // Lưu danh sách URL ảnh
-                    createdAt = Timestamp.now()
+                    userName = authorName,
+                    rating = rating,
+                    comment = content,
+                    createdAt = Timestamp.now(),
+                    images = uploadedImageUrls.takeIf { it.isNotEmpty() },
+                    productVariant = productVariant,
+                    helpfulCount = 0
                 )
 
-                // 3. Lưu đánh giá vào Firestore (CHỈNH SỬA collection)
-                // --- LƯU VÀO TOP-LEVEL COLLECTION "reviews" ---
-                db.collection("reviews") // <-- Ghi vào collection "reviews" ở cấp cao nhất
-                    .add(newReview) // Dùng add() để Firestore tự tạo document ID
-                    .await() // Đợi task ghi vào Firestore hoàn thành
+                // Add review to Firestore
+                val db = FirebaseFirestore.getInstance()
+                db.collection("reviews")
+                    .document(review.id)
+                    .set(review)
+                    .await()
 
-                // Gửi đánh giá thành công
+                // Update product rating average and count
+                val productRef = db.collection("products").document(productId)
+                db.runTransaction { transaction ->
+                    val product = transaction.get(productRef)
+                    val currentRatingCount = product.getLong("ratingCount")?.toInt() ?: 0
+                    val currentRatingSum = product.getDouble("ratingSum") ?: 0.0
+                    
+                    val newRatingCount = currentRatingCount + 1
+                    val newRatingSum = currentRatingSum + rating
+                    val newRatingAverage = newRatingSum / newRatingCount
+                    
+                    transaction.update(productRef, mapOf(
+                        "ratingCount" to newRatingCount,
+                        "ratingSum" to newRatingSum,
+                        "rating" to newRatingAverage
+                    ))
+                }.await()
+
+                // Update local state
+                _state.value = _state.value.copy(
+                    reviews = _state.value.reviews + review
+                )
+
                 _reviewSubmissionState.value = ReviewSubmissionState(submitSuccess = true)
-
-                // Tải lại danh sách bình luận (sẽ dùng hàm getReviews đã chỉnh sửa)
-                getReviews(productId)
-
+                
+                // Reset after success
+                delay(2000)
+                _reviewSubmissionState.value = ReviewSubmissionState()
+                
             } catch (e: Exception) {
-                Log.e("ProductDetailViewModel", "Error submitting review", e)
                 _reviewSubmissionState.value = ReviewSubmissionState(
-                    isSubmitting = false,
-                    submitError = e.message ?: "Lỗi khi gửi đánh giá. Vui lòng thử lại."
+                    submitError = e.message ?: "Failed to submit review"
                 )
             }
         }
