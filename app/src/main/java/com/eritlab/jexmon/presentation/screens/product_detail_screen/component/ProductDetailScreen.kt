@@ -15,6 +15,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -225,7 +226,7 @@ fun ProductDetailContent(
             ) {
                 Column(
                     modifier = Modifier.fillMaxWidth()
-                        .height(800.dp)
+                       .height(700.dp)
                         .verticalScroll(scrollState),  // Cuộn mượt mà không bị lỗi                    ,
 
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -258,7 +259,7 @@ fun ProductDetailContent(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = product.rating.toString(),
+                                text = String.format("%.1f", product.rating), //định dạng hiển thị 1 số thập phân sau dấu phẩy
                                 fontWeight = FontWeight.Bold,
                                 color = Color.Black
                             )
@@ -325,7 +326,7 @@ fun ProductDetailContent(
                             // Giá giảm
                             Text(
                                 text = "${String.format("%,d", discountedPrice.toLong())}đ",
-                                fontSize = 30.sp,
+                                fontSize = 23.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFFD0011B) // Màu đỏ
                             )
@@ -333,27 +334,29 @@ fun ProductDetailContent(
                             // Giá gốc (gạch ngang)
                             Text(
                                 text = "${String.format("%,d", product.price.toLong())}đ",
-                                fontSize = 18.sp,
+                                fontSize = 15.sp,
                                 color = Color.Gray,
                                 textDecoration = TextDecoration.LineThrough // Gạch ngang giá gốc
                             )
 
                             // Phần trăm giảm giá
-                            Text(
-                                text = "-${discountText}",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFFFF8800) // Màu cam
-                            )
+//                            Text(
+//                                text = "-${discountText}",
+//                                fontSize = 18.sp,
+//                                fontWeight = FontWeight.Bold,
+//                                color = Color(0xFFFF8800) // Màu cam
+//                            )
 
 
                             Spacer(modifier = Modifier.weight(1f)) // Đẩy "Đã bán" sang bên phải
 
                             // Đã bán
                             Text(
-                                text = "Đã bbán ${product.sold}",
-                                fontSize = 16.sp,
-                                color = Color.Gray
+                                text = "Đã bán ${product.sold}",
+                                fontSize = 14.sp,
+                                color = Color.Black,
+                                fontWeight = FontWeight.Bold
+
                             )
 
                         }
@@ -364,7 +367,7 @@ fun ProductDetailContent(
                         Text(
                             text = product.name,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 25.sp
+                            fontSize = 20.sp
                         )
                         Divider(
                             color = Color.LightGray, // Màu viền
@@ -381,7 +384,7 @@ fun ProductDetailContent(
                         ) {
                             Text(
                                 text = if (isExpanded) product.description else "${product.description.take(100)}...",
-                                fontSize = 19.sp,
+                                fontSize = 15.5.sp,
                                 color = MaterialTheme.colors.onSurface,
                                 modifier = Modifier.weight(1f) // Cho phép chiếm phần lớn diện tích
                             )
@@ -413,31 +416,73 @@ fun ProductDetailContent(
                         )
 
                         Column {
-
-
                             Spacer(modifier = Modifier.height(4.dp)) // Khoảng cách nhỏ
 
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                            Row(
+                                verticalAlignment = Alignment.Top, // Cho icon và chữ căn hàng trên cùng
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                // Icon bên trái
                                 Icon(
-                                    painter = painterResource(id = R.drawable.ship), // Icon giao hàng
+                                    painter = painterResource(id = R.drawable.ship),
                                     contentDescription = "Shipping Icon",
-                                    tint = Color(0xFF4CAF50), // Màu xanh lá
-                                    modifier = Modifier.size(18.dp)
+                                    tint = Color(0xFF4CAF50),
+                                    modifier = Modifier
+                                        .size(18.dp)
+                                        .padding(top = 2.dp) // Căn chỉnh nhỏ nếu cần
                                 )
 
-                                Spacer(modifier = Modifier.width(4.dp))
+                                Spacer(modifier = Modifier.width(8.dp)) // Khoảng cách giữa icon và nội dung
 
-                                Text(
-                                    text = "Nhận từ 25 Th03 - 25 Th03, phí giao đ0",
-                                    fontSize = 19.sp,
-                                    color = Color.Black
-                                )
+                                // Nội dung chữ bên phải
+                                Column {
+                                    Text(
+                                        text = "Nhận từ 25 Th03 - 25 Th03",
+                                        fontSize = 16.sp,
+                                        color = Color.Black
+                                    )
+
+                                    Text(
+                                        text = "Miễn phí vận chuyển",
+                                        fontSize = 16.sp,
+                                        color = Color.Black
+                                    )
+
+                                    Text(
+                                        text = "Tặng Voucher đ15.000 nếu đơn giao sau thời gian trên.",
+                                        fontSize = 14.sp,
+                                        color = Color.Gray
+                                    )
+                                }
                             }
+                        }
 
+                        Divider(
+                            color = Color.LightGray, // Màu viền
+                            thickness = 0.5.dp, // Độ dày viền
+                            modifier = Modifier.padding(vertical = 10.dp)
+                        )
+
+                        Row(
+                            verticalAlignment = Alignment.Top, // Cho icon và chữ căn hàng trên cùng
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            // Icon bên trái
+                            Image(
+                                painter = painterResource(id = R.drawable.icon_doi_tra_hang),
+                                contentDescription = "Return Package Icon",
+                                modifier = Modifier
+                                    .size(21.dp)
+                                    .padding(top = 2.dp) // Căn chỉnh nhỏ nếu cần
+                            )
+
+                            Spacer(modifier = Modifier.width(8.dp)) // Khoảng cách giữa icon và nội dung
+
+                            // Nội dung chữ bên phải
                             Text(
-                                text = "Tặng Voucher đ15.000 nếu đơn giao sau thời gian trên.",
+                                text = "Trả hàng miễn phí 15 ngày",
                                 fontSize = 16.sp,
-                                color = Color.Gray
+                                color = Color.Black
                             )
                         }
 
@@ -446,25 +491,31 @@ fun ProductDetailContent(
                             thickness = 0.5.dp, // Độ dày viền
                             modifier = Modifier.padding(vertical = 10.dp)
                         )
+
+
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
-                                text = product.rating.toString(),
+                                text = String.format("%.1f", product.rating), //định dạng hiển thị 1 số thập phân sau dấu phẩy
                                 fontWeight = FontWeight.Bold,
-                                color = Color.Black
+                                color = Color.Black,
+                                fontSize = 20.sp,
+
                             )
+
+                            Spacer(modifier = Modifier.width(6.dp))
                             Image(
                                 painter = painterResource(id = R.drawable.star_icon),
                                 contentDescription = null
                             )
 
-                            Spacer(modifier = Modifier.width(4.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
 
                             Text(
                                 text = "Đánh Giá Sản Phẩm",
-                                fontSize = 18.sp,
+                                fontSize = 14.5.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.Black
                             )
@@ -475,16 +526,16 @@ fun ProductDetailContent(
                                 // *Cải tiến:* Sử dụng kích thước thực tế của danh sách đánh giá từ state
                                 // Thay vì số cứng "(206)"
                                 text = "(${state.reviews.size})",
-                                fontSize = 17.sp,
-                                color = Color.Gray
+                                fontSize = 14.5.sp,
+                                color = Color.Black
                             )
 
                             Spacer(modifier = Modifier.weight(1f)) // Đẩy Text "Tất cảaa >" sang phải
 
                             // Gắn clickable modifier vào Text "Tất cảaa >"
                             Text(
-                                text = "Tất cảaa >",
-                                fontSize = 17.sp,
+                                text = "Tất cả >",
+                                fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = Color.Gray,
                                 modifier = Modifier.clickable {
@@ -595,40 +646,60 @@ fun ProductDetailContent(
                 }
             }
 
-            // 🔹 Nút thêm vào giỏ hàng
-            // 🔹 Nút thêm vào giỏ hàng
-            Box(
+            //Nút thêm vào giỏ hàng và mua ngay
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color.White)
-                    .padding(16.dp)
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .height(56.dp) // ✅ Tăng chiều cao nút lên
             ) {
+                // 🔹 Nút "Thêm vào giỏ hàng" (chiếm 2 phần)
                 Button(
                     onClick = {
                         isSheetOpen = true
-                        coroutineScope.launch {
-                            sheetState.show()
-                        }
+                        coroutineScope.launch { sheetState.show() }
                     },
                     colors = ButtonDefaults.buttonColors(
-                        backgroundColor = MaterialTheme.colors.PrimaryColor,
+                        backgroundColor = Color(0xFF26A69A),
                         contentColor = Color.White
                     ),
+                    shape = RoundedCornerShape(topStart = 15.dp, bottomStart = 15.dp),
+                    contentPadding = PaddingValues(0.dp),
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp)
-                        .clip(RoundedCornerShape(15.dp))
+                        .weight(2f)
+                        .fillMaxHeight() // ✅ Đảm bảo chiếm hết chiều cao Row
                 ) {
-                    Text(
-                        text = "Thêm vào giỏ hàng - ${String.format("%,d", product.price.toLong())}đ",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
+                    Image(
+                        painter = painterResource(id = R.drawable.cart),
+                        contentDescription = "Giỏ hàng",
+                        modifier = Modifier.size(24.dp)
                     )
                 }
-            }
-        
-        }
 
+                // 🔹 Nút "Mua với voucher" (chiếm 3 phần)
+                Button(
+                    onClick = {
+                        // Action mua hàng
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        backgroundColor = Color(0xFFE53935),
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(topEnd = 15.dp, bottomEnd = 15.dp),
+                    modifier = Modifier
+                        .weight(3f)
+                        .fillMaxHeight()
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Mua với voucher", fontSize = 14.sp)
+                        Text("₫363.636", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+
+
+
+        }
 
             // day khong lien quan
         if (isSheetOpen) {
@@ -802,7 +873,7 @@ fun BottomSheetContent(
             thickness = 0.5.dp, // Độ dày viền
             modifier = Modifier.padding(vertical = 10.dp)
         )
-        Text("Chọn Sizee", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        Text("Chọn Size", fontWeight = FontWeight.Bold, fontSize = 16.sp)
         LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             items(availableSizes) { size ->
                 Box(
@@ -860,7 +931,7 @@ fun BottomSheetContent(
         ) {
             Text("Chọn Số Lượng:", fontWeight = FontWeight.Bold, fontSize = 16.sp)
 
-            Spacer(modifier = Modifier.width(150.dp)) // Tạo khoảng cách nhỏ giữa text và nút
+            Spacer(modifier = Modifier.width(100.dp)) // Tạo khoảng cách nhỏ giữa text và nút
 
             IconButton(onClick = { if (quantity > 1) quantity-- }) {
                 Image(painter = painterResource(id = R.drawable.remove), contentDescription = null)

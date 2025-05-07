@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -95,7 +96,7 @@ fun AppBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 15.dp, end = 15.dp, top = 30.dp, bottom = 30.dp),
+                .padding(start = 10.dp, end = 10.dp, top = 30.dp, bottom = 30.dp),
             horizontalArrangement = Arrangement.spacedBy(5.dp)
         ) {
             TextField(
@@ -123,6 +124,7 @@ fun AppBar(
                         color = MaterialTheme.colors.PrimaryLightColor,
                         shape = RoundedCornerShape(20.dp)
                     )
+                    .fillMaxWidth()
                     .weight(1f),
             )
 
