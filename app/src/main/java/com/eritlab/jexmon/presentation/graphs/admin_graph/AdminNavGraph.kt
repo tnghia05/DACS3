@@ -1,8 +1,6 @@
 package com.eritlab.jexmon.presentation.graphs.admin_graph
 
 import android.util.Log
-import androidx.collection.forEach
-import androidx.compose.runtime.LaunchedEffect
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
@@ -12,9 +10,8 @@ import com.eritlab.jexmon.presentation.screens.admin.AddBrandScreen
 import com.eritlab.jexmon.presentation.screens.admin.AdminDashboard
 import com.eritlab.jexmon.presentation.screens.admin.Brand.EditBrandScreen
 import com.eritlab.jexmon.presentation.screens.admin.BrandScreen
-import com.eritlab.jexmon.presentation.screens.admin.category.AddCategoryScreen
+import com.eritlab.jexmon.presentation.screens.admin.category.AddProductScreen
 import com.eritlab.jexmon.presentation.screens.admin.category.CategoryScreen
-import com.eritlab.jexmon.presentation.screens.admin.category.EditCategoryScreen
 
 fun NavGraphBuilder.adminNavGraph(navHostController: NavHostController) {
     Log.d("Navigation", "AdminNavGraph is being set up")
@@ -56,10 +53,10 @@ fun NavGraphBuilder.adminNavGraph(navHostController: NavHostController) {
         composable(AdminScreen.AddCategoryScreen.route) {
             Log.d("Navigation", "AddCategoryScreen composable created")
 
-            AddCategoryScreen(navHostController)
+            AddProductScreen (navHostController)
 
             }
-        composable("admin_edit_category_screen/{brandId}") { backStackEntry ->
+        composable("admin_edit_category_screen/{categoryId}") { backStackEntry ->
             Log.d("Navigation", "EditBrandScreen composable created")
 
             // Extract the brandId from the backStackEntry
@@ -67,7 +64,10 @@ fun NavGraphBuilder.adminNavGraph(navHostController: NavHostController) {
             val categoryId = backStackEntry.arguments?.getString("categoryId")
             // Check if brandId is null and handle accordingly
             categoryId?.let {
-                EditCategoryScreen(navHostController, it) // Pass the brandId to EditBrandScreen
+                AddProductScreen(navHostController, it)
+            } ?: run {
+                Log.e("Navigation", "Brand ID is missing!")
+                // You can add fallback behavior, like navigating back or showing an error
             }
                 ?: run {
                     Log.e("Navigation", "Brand ID is missing!")

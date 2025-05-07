@@ -5,15 +5,30 @@ import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.*
+import androidx.compose.material.Button
+import androidx.compose.material.ButtonDefaults
+import androidx.compose.material.Card
+import androidx.compose.material.Icon
+import androidx.compose.material.IconButton
+import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -23,20 +38,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.rememberImagePainter
-import com.eritlab.jexmon.domain.model.CagerotyModel
+import com.eritlab.jexmon.domain.model.ProductModel
 import com.eritlab.jexmon.presentation.graphs.admin_graph.AdminScreen
 import com.google.firebase.firestore.FirebaseFirestore
 
 @Composable
 fun CategoryScreen(navController: NavController) {
     val firestore = FirebaseFirestore.getInstance()
-    val categoryList = remember { mutableStateListOf<CagerotyModel>() }
+    val categoryList = remember { mutableStateListOf<ProductModel>() }
 
     LaunchedEffect(Unit) {
-        firestore.collection("categories").addSnapshotListener { snapshot, _ ->
+        firestore.collection("products").addSnapshotListener { snapshot, _ ->
             snapshot?.let {
                 val categories = it.documents.mapNotNull { doc ->
-                    doc.toObject(CagerotyModel::class.java)?.copy(id = doc.id)
+                    doc.toObject(ProductModel::class.java)?.copy(id = doc.id)
                 }
                 categoryList.clear()
                 categoryList.addAll(categories)
@@ -50,7 +65,7 @@ fun CategoryScreen(navController: NavController) {
             .padding(16.dp)
     ) {
         Text(
-            text = "Danh sách Danh mục",
+            text = "Danh sách Sản Phẩm",
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(vertical = 16.dp),
@@ -62,14 +77,14 @@ fun CategoryScreen(navController: NavController) {
             modifier = Modifier.align(Alignment.End),
             colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF6200EE))
         ) {
-            Text(text = "Thêm Danh mục", color = Color.White)
+            Text(text = "Thêm Sản Phẩm ", color = Color.White)
         }
     }
 
     Column(
         modifier = Modifier
             .padding(top = 125.dp, start = 12.dp, end = 12.dp)
-            .size(400.dp)
+            .size(600.dp)
             .verticalScroll(rememberScrollState())
     ) {
         categoryList.forEach { category ->
@@ -83,7 +98,7 @@ fun CategoryScreen(navController: NavController) {
 }
 
 @Composable
-fun CategoryItem(category: CagerotyModel, onEditClick: () -> Unit, onDeleteClick: () -> Unit) {
+fun CategoryItem(category: ProductModel, onEditClick: () -> Unit, onDeleteClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -96,16 +111,18 @@ fun CategoryItem(category: CagerotyModel, onEditClick: () -> Unit, onDeleteClick
             modifier = Modifier.background(Color.White).padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+
             Image(
-                painter = rememberImagePainter(category.imageUrl),
+                painter = rememberImagePainter(category.images[0]),
                 contentDescription = category.name,
                 modifier = Modifier.size(64.dp).background(Color.Gray, RoundedCornerShape(8.dp)),
                 contentScale = ContentScale.Crop
             )
+            Log.d("CategoryItem", "Category image URL: ${category.images[0]}")
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(category.name, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                Text(category.description, fontSize = 14.sp, color = Color.Gray)
+                Text(category.name, fontSize = 14.sp, color = Color.Gray)
             }
             Row {
                 IconButton(onClick = onEditClick) {
@@ -124,7 +141,8 @@ fun CategoryItem(category: CagerotyModel, onEditClick: () -> Unit, onDeleteClick
 }
 
 fun deleteCategoryFromFirestore(categoryId: String, firestore: FirebaseFirestore) {
-    firestore.collection("categories").document(categoryId).delete()
+    Log.d("CategoryScreen", "Deleting category with ID: $categoryId")
+    firestore.collection("products").document(categoryId).delete()
         .addOnSuccessListener {
             Log.d("CategoryScreen", "Category deleted successfully")
         }
