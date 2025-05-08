@@ -180,35 +180,35 @@ class ProductDetailViewModel @Inject constructor(
                 onFailure(e) // Truyền lỗi qua callback thất bại
             }
     }
-  /// Hàm tải u
-  // ser
-  suspend fun getUserNameById(userId: String): String? {
-      // Kiểm tra userId không rỗng
-      if (userId.isBlank()) {
-          Log.w("ViewModel", "User ID is blank, cannot fetch user name.")
-          return null
-      }
+    /// Hàm tải u
+    // ser
+    suspend fun getUserNameById(userId: String): String? {
+        // Kiểm tra userId không rỗng
+        if (userId.isBlank()) {
+            Log.w("ViewModel", "User ID is blank, cannot fetch user name.")
+            return null
+        }
 
-      return try {
-          val db = FirebaseFirestore.getInstance()
-          // --- THAY "users" BẰNG TÊN COLLECTION THỰC TẾ CHỨA PROFILE USER CỦA BẠN ---
-          val userDocument = db.collection("user").document(userId).get().await()
+        return try {
+            val db = FirebaseFirestore.getInstance()
+            // --- THAY "users" BẰNG TÊN COLLECTION THỰC TẾ CHỨA PROFILE USER CỦA BẠN ---
+            val userDocument = db.collection("user").document(userId).get().await()
 
-          if (userDocument.exists()) {
-              // Document user tồn tại, lấy giá trị của trường "name"
-              // Sử dụng getString("name") để lấy giá trị String
-              userDocument.getString("name")
-          } else {
-              // Document user không tồn tại với userId này
-              Log.w("ViewModel", "User document with ID $userId not found.")
-              null
-          }
-      } catch (e: Exception) {
-          // Xảy ra lỗi khi truy vấn Firestore
-          Log.e("ViewModel", "Error fetching user name for ID $userId", e)
-          null
-      }
-  }
+            if (userDocument.exists()) {
+                // Document user tồn tại, lấy giá trị của trường "name"
+                // Sử dụng getString("name") để lấy giá trị String
+                userDocument.getString("name")
+            } else {
+                // Document user không tồn tại với userId này
+                Log.w("ViewModel", "User document with ID $userId not found.")
+                null
+            }
+        } catch (e: Exception) {
+            // Xảy ra lỗi khi truy vấn Firestore
+            Log.e("ViewModel", "Error fetching user name for ID $userId", e)
+            null
+        }
+    }
 
     // Hàm thêm sản phẩm vào giỏ hàng
     // Giữ nguyên cấu trúc Flow<Result<Unit>> như bạn đã có
@@ -275,7 +275,7 @@ class ProductDetailViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 _reviewSubmissionState.value = ReviewSubmissionState(isSubmitting = true)
-                
+
                 // Upload images first if any
                 val uploadedImageUrls = mutableListOf<String>()
                 if (imageUris.isNotEmpty()) {
@@ -316,11 +316,11 @@ class ProductDetailViewModel @Inject constructor(
                     val product = transaction.get(productRef)
                     val currentRatingCount = product.getLong("ratingCount")?.toInt() ?: 0
                     val currentRatingSum = product.getDouble("ratingSum") ?: 0.0
-                    
+
                     val newRatingCount = currentRatingCount + 1
                     val newRatingSum = currentRatingSum + rating
                     val newRatingAverage = newRatingSum / newRatingCount
-                    
+
                     transaction.update(productRef, mapOf(
                         "ratingCount" to newRatingCount,
                         "ratingSum" to newRatingSum,
@@ -334,11 +334,11 @@ class ProductDetailViewModel @Inject constructor(
                 )
 
                 _reviewSubmissionState.value = ReviewSubmissionState(submitSuccess = true)
-                
+
                 // Reset after success
                 delay(2000)
                 _reviewSubmissionState.value = ReviewSubmissionState()
-                
+
             } catch (e: Exception) {
                 _reviewSubmissionState.value = ReviewSubmissionState(
                     submitError = e.message ?: "Failed to submit review"
@@ -352,4 +352,3 @@ class ProductDetailViewModel @Inject constructor(
         _reviewSubmissionState.value = ReviewSubmissionState()
     }
 }
-
