@@ -771,23 +771,24 @@ fun ProductItem(
         }
         Spacer(modifier = Modifier.height(12.dp))
         Column {
-            Row {
+            Row(
+                modifier = Modifier.fillMaxWidth(), // cho phép chiếm hết chiều ngang
+                horizontalArrangement = Arrangement.SpaceBetween // tự động đẩy 2 Text về hai phía
+            ) {
                 Text(
-                    text = "Tổng Số Tiền ($quantity sản phẩm)",
-                    fontSize = 15.sp,
+                    text = "Tổng số tiền ($quantity sản phẩm)",
+                    fontSize = 14.sp,
                     color = Color.Black
                 )
-                Spacer(modifier = Modifier.width(93.dp))
 
                 Text(
                     text = formatPrice(productPrice * (1 - discount / 100) * quantity),
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
                 )
             }
-
-
         }
+
     }
 }
 

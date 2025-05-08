@@ -171,7 +171,7 @@ fun CartScreen(
                         painter = rememberAsyncImagePainter(cartItem.imageUrl),
                         contentDescription = null,
                         modifier = Modifier
-                            .size(80.dp)
+                            .size(70.dp)
                             .background(Color(0x8DB3B0B0), shape = RoundedCornerShape(10.dp))
                             .padding(10.dp)
                             .clip(RoundedCornerShape(10.dp))
@@ -179,23 +179,23 @@ fun CartScreen(
                     Column {
                         Text(
                             text = cartItem.name,
-
                             fontWeight = FontWeight(700),
                             fontSize = 16.sp,
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(7.dp))
                         val colorName = convertToColorName(cartItem.color)
                         Row {
                             Text(
                                 text = "Size: ${cartItem.size} " ,
-                                fontSize = 16.sp,
+                                fontSize = 14.5.sp,
 
                                 )
                             Text(
                             text = "Color: $colorName",
+                                fontSize = 14.5.sp,
                             )
                         }
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(7.dp))
                         Row {
                             val discountedPrice = cartItem.price * (1 - cartItem.discount.toFloat() / 100)
                             Text(
@@ -212,18 +212,20 @@ fun CartScreen(
                     
                     // Nút điều chỉnh số lượng
                     Row(
-                        modifier = Modifier.padding(start = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        modifier = Modifier.padding(start = 0.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(-6.dp) // giảm khoảng cách giữa các phần tử
                     ) {
                         IconButton(
                             onClick = { viewModel.updateQuantity(cartItem.id!!, cartItem.quantity - 1) }
                         ) {
-                            Text("-", fontSize = 20.sp)
+                            Text("-", fontSize = 30.sp)
                         }
                         
                         Text(
                             text = cartItem.quantity.toString(),
-                            modifier = Modifier.padding(horizontal = 8.dp)
+                            color = Color.Red
+                           // modifier = Modifier.padding(start = 1.dp, end = 2.dp)
                         )
                         
                         IconButton(
@@ -231,14 +233,14 @@ fun CartScreen(
                         ) {
                             Text("+", fontSize = 20.sp)
                         }
-                    IconButton(
+                        IconButton(
                             onClick = {                             Log.d("CartScreen", "Removed item: ${cartItem.name}")
-
                                 viewModel.removeItem(cartItem)
                             }
                         ) {
                             Icon(
                                 painter = painterResource(id = R.drawable.trash),
+                                modifier = Modifier.size(15.dp),// hoặc bất kỳ kích thước nào bạn muốn
                                 contentDescription = null,
                                 tint = MaterialTheme.colors.PrimaryColor
                             )
