@@ -107,6 +107,8 @@ fun ProductsHome(
             suggestions = state.searchSuggestions,
             searchHistory = state.searchHistory,
             onFilterClick = { showFilterSheet = true },
+            onDeleteSearchHistory = { query -> viewModel.deleteSearchHistory(query) },
+            onBackBtnClick = { navController.popBackStack() },
             modifier = Modifier.padding(horizontal = 16.dp)
         )
 

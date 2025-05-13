@@ -223,4 +223,31 @@ class ProductFilterViewModel : ViewModel() {
             }
         }
     }
+
+    // Add function to delete search history
+    fun deleteSearchHistory(query: String) {
+        viewModelScope.launch {
+            try {
+                // Find and delete the search history document with matching query
+                val querySnapshot = db.collection("search_history")
+                    .whereEqualTo("query", query)
+                    .get()
+                    .await()
+
+                // Delete from Firestore
+                for (document in querySnapshot.documents) {
+                    db.collection("search_history")
+                        .document(document.id)
+                        .delete()
+                        .await()
+                }
+
+                // Update local state by removing the deleted query
+                val updatedHistory = _state.value.searchHistory.filter { it.query != query }
+                _state.value = _state.value.copy(searchHistory = updatedHistory)
+            } catch (e: Exception) {
+                Log.e("SearchHistory", "Error deleting search history", e)
+            }
+        }
+    }
 }
