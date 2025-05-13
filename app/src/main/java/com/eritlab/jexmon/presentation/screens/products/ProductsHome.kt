@@ -1,9 +1,7 @@
 package com.eritlab.jexmon.presentation.screens.products
 
 import android.util.Log
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.scaleIn
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,10 +14,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
-import androidx.compose.material.Card
-import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
+import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -39,96 +40,110 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
-import com.eritlab.jexmon.presentation.dashboard_screen.component.AppBar
-import com.eritlab.jexmon.presentation.graphs.detail_graph.DetailScreen
+import com.eritlab.jexmon.presentation.screens.products.component.FilterSheet
+import com.eritlab.jexmon.presentation.screens.products.component.SearchBar
 import kotlinx.coroutines.launch
+import java.text.NumberFormat
+import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ProductsHome(
     brandId: String,
-
     navController: NavHostController = rememberNavController(),
     viewModel: ProductFilterViewModel = hiltViewModel(),
-    onItemClick: (String) -> Unit, // Chỉ cần nhận vào onItemClick mà không cần định nghĩa lại nữa
+    onItemClick: (String) -> Unit,
     sortOption: String
-
-
 ) {
     var isLoading by remember { mutableStateOf(false) }
-
-    // Lấy state từ viewModel
+    var showFilterSheet by remember { mutableStateOf(false) }
+    
     val state = viewModel.state.collectAsState().value
-
-    // Top Bar visibility
-    val topBarVisibilityState = remember { mutableStateOf(true) }
-    val scope = rememberCoroutineScope() // Lấy scope cho coroutine
+    val scope = rememberCoroutineScope()
+    val bottomSheetState = rememberModalBottomSheetState()
 
     LaunchedEffect(brandId, sortOption) {
         Log.d("ProductsHome", "Loading products for brand: $brandId with sort: $sortOption")
         isLoading = true
-        viewModel.filterProductsByBrand(brandId, sortOption) // Gọi hàm lọc với cả brandId và sortOption
+        viewModel.filterProductsByBrand(brandId, sortOption)
         isLoading = false
     }
 
-    // AppBar
-    AppBar(
-        navController = navController,
-        isVisible = topBarVisibilityState.value,
-        searchCharSequence = { query ->
-            viewModel.searchProducts(query) // Gọi hàm tìm kiếm trong ViewModel
-        },
-        onCartIconClick = { navController.navigate(DetailScreen.CartScreen.route) },
-        onNotificationIconClick = { navController.navigate(DetailScreen.NotificationScreen.route) },
-        onFilterApply = { brand, sort ->
-            // Sử dụng coroutine scope để gọi hàm suspend
-            scope.launch {
-                viewModel.filterProductsByBrand(brand, sort) // Gọi hàm suspend trong scope
-            }
+    if (showFilterSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showFilterSheet = false },
+            sheetState = bottomSheetState,
+        ) {
+            FilterSheet(
+                currentFilter = state.currentFilter,
+                onFilterApply = { filter ->
+                    viewModel.applyFilter(filter)
+                    scope.launch { bottomSheetState.hide() }.invokeOnCompletion {
+                        if (!bottomSheetState.isVisible) {
+                            showFilterSheet = false
+                        }
+                    }
+                },
+                onDismiss = {
+                    scope.launch { bottomSheetState.hide() }.invokeOnCompletion {
+                        if (!bottomSheetState.isVisible) {
+                            showFilterSheet = false
+                        }
+                    }
+                }
+            )
         }
-    )
+    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(top = 110.dp, start = 16.dp, end = 16.dp)
+            .padding(top = 8.dp)
     ) {
-        // Hiển thị CircularProgressIndicator nếu đang tải
-        if (isLoading) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        } else {
-            // Hiển thị sản phẩm nếu không còn trạng thái loading
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.fillMaxWidth()
-                    .height(600.dp)  // Cố định chiều cao cho LazyVerticalGrid
-            ) {
-                val productsToShow = if (state.searchQuery.isNotBlank()) {
-                    state.searchResults
-                } else {
-                    state.filteredProducts
-                }
-                itemsIndexed(productsToShow) { index, product ->
-                    AnimatedVisibility(
-                        visible = true,
-                        enter = fadeIn() + scaleIn(initialScale = 0.8f)
-                    ) {
+        SearchBar(
+            query = state.searchQuery,
+            onQueryChange = { query -> viewModel.searchProducts(query) },
+            onSearch = { query -> viewModel.searchProducts(query) },
+            suggestions = state.searchSuggestions,
+            searchHistory = state.searchHistory,
+            onFilterClick = { showFilterSheet = true },
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
+
+        Box(
+            modifier = Modifier
+                .height(600.dp)
+                .padding(top = 8.dp)
+        ) {
+            if (isLoading || state.isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            } else {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier
+                        .height(600.dp)
+                        .padding(horizontal = 16.dp)
+                ) {
+                    val productsToShow = if (state.searchQuery.isNotBlank()) {
+                        state.searchResults
+                    } else {
+                        state.filteredProducts
+                    }
+                    
+                    itemsIndexed(productsToShow) { index, product ->
                         ProductCard(
                             product = product,
                             onClick = {
-
-                                product.id?.let {
-                                    id ->
+                                product.id?.let { id ->
                                     Log.d("ProductsHome", "Navigating to product with id: $id")
                                     onItemClick(id)
                                 }
-                            }
+                            },
+                            modifier = Modifier.animateItemPlacement()
                         )
                     }
                 }
@@ -140,14 +155,14 @@ fun ProductsHome(
 @Composable
 fun ProductCard(
     product: com.eritlab.jexmon.domain.model.ProductModel,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(250.dp)
             .clickable(onClick = onClick),
-        elevation = 4.dp
     ) {
         Column {
             AsyncImage(
@@ -161,19 +176,24 @@ fun ProductCard(
             Column(modifier = Modifier.padding(8.dp)) {
                 Text(
                     text = product.name,
-                    style = MaterialTheme.typography.subtitle1,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "$${product.price}",
-                    style = MaterialTheme.typography.body2,
+                    text = formatPrice(product.price),
+                    style = MaterialTheme.typography.bodyMedium,
                     fontSize = 16.sp,
-                    color = MaterialTheme.colors.primary
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
         }
     }
+}
+
+private fun formatPrice(price: Double): String {
+    val format = NumberFormat.getCurrencyInstance(Locale("vi", "VN"))
+    return format.format(price)
 }

@@ -108,7 +108,7 @@ fun HomeNavGraph(navHostController: NavHostController) {
         ) { backStackEntry ->
             val category = backStackEntry.arguments?.getString("category") ?: "all"
             BrandsHome(category = category , navController = navController, onItemClick = { selectedCategory ->
-                navController.navigate("brands_home_screen/$selectedCategory")
+                navController.navigate("products_home_screen/$selectedCategory")
             })
         }
         // su dung route de tuong ung voi san pham

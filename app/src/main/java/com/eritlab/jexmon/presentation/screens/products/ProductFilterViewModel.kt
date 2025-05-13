@@ -3,7 +3,10 @@ package com.eritlab.jexmon.presentation.screens.products
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.eritlab.jexmon.domain.model.ProductFilter
 import com.eritlab.jexmon.domain.model.ProductModel
+import com.eritlab.jexmon.domain.model.SearchHistoryModel
+import com.eritlab.jexmon.domain.model.SortOption
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,112 +18,208 @@ data class ProductFilterState(
     val filteredProducts: List<ProductModel> = emptyList(),
     val selectedBrand: String = "all",
     val searchQuery: String = "",
-    val searchResults: List<ProductModel> = emptyList()
+    val searchResults: List<ProductModel> = emptyList(),
+    val searchHistory: List<SearchHistoryModel> = emptyList(),
+    val searchSuggestions: List<String> = emptyList(),
+    val currentFilter: ProductFilter = ProductFilter(),
+    val isLoading: Boolean = false
 )
-
-
 
 class ProductFilterViewModel : ViewModel() {
     private var searchJob: kotlinx.coroutines.Job? = null
-    private val searchDelay = 300L // Độ trễ debounce 300ms
+    private val searchDelay = 300L
     private val _state = MutableStateFlow(ProductFilterState())
     val state: StateFlow<ProductFilterState> = _state
-
     private val db = FirebaseFirestore.getInstance()
-    // Lọc sản phẩm theo thương hiệu (brand) và sắp xếp theo giá
-    suspend fun filterProductsByBrand(
-        brandIds: String,
-        sortOption: String = ""
-    ) {
-        Log.d("ProductFilter", "Filtering for brands: $brandIds with sort option: $sortOption")
 
+    // Thêm lại hàm filterProductsByBrand
+    suspend fun filterProductsByBrand(brandIds: String, sortOption: String = "") {
         try {
+            _state.value = _state.value.copy(isLoading = true)
+            
             val brandIdList = brandIds.split(",").map { it.trim() }
             
             // Lấy dữ liệu từ Firebase Firestore theo danh sách brandId
-            val productsSnapshot = db.collection("products")
-                .whereIn("brandId", brandIdList)
-                .get()
-                .await()
+            val productsSnapshot = if (brandIds == "all") {
+                db.collection("products").get().await()
+            } else {
+                db.collection("products")
+                    .whereIn("brandId", brandIdList)
+                    .get()
+                    .await()
+            }
 
             var products = productsSnapshot.documents.mapNotNull { document ->
                 document.toObject(ProductModel::class.java)?.copy(id = document.id)
             }
-            Log.d ("ProductFilter", "Products count: ${products.size}")
 
             // Sắp xếp theo sortOption
             products = when (sortOption.trim()) {
                 "Giá thấp đến cao" -> products.sortedBy { it.price }
                 "Giá cao đến thấp" -> products.sortedByDescending { it.price }
+                "Mới nhất" -> products.sortedByDescending { it.createdAt }
+                "Đánh giá cao nhất" -> products.sortedByDescending { it.rating }
                 else -> products
             }
 
-            Log.d("ProductFilter", "Filtered products count: ${products.size}")
-            Log.d("ProductFilter", "Filtered products: ${products.map { it.name }}")
-            Log.d("ProductFilter", "Sort option applied: $sortOption")
-            Log.d("ProductFilter", "Sorted prices: ${products.map { it.price }}")
-
-            // Cập nhật state
             _state.value = _state.value.copy(
                 products = products,
                 filteredProducts = products,
-                selectedBrand = brandIds
+                selectedBrand = brandIds,
+                isLoading = false
             )
         } catch (e: Exception) {
-            Log.e("ProductFilter", "Error fetching products from Firestore", e)
-            e.printStackTrace() // In ra stack trace để debug
+            Log.e("ProductFilter", "Lỗi khi lọc sản phẩm theo thương hiệu", e)
+            _state.value = _state.value.copy(isLoading = false)
+        }
+    }
+
+    // Lưu lịch sử tìm kiếm
+    private fun saveSearchHistory(query: String) {
+        viewModelScope.launch {
+            try {
+                val searchHistory = SearchHistoryModel(query = query)
+                // Lưu vào Firestore
+                db.collection("search_history")
+                    .add(searchHistory)
+                    .await()
+                
+                // Cập nhật state với lịch sử mới
+                val updatedHistory = _state.value.searchHistory + searchHistory
+                _state.value = _state.value.copy(
+                    searchHistory = updatedHistory.takeLast(10) // Giữ 10 lịch sử gần nhất
+                )
+            } catch (e: Exception) {
+                Log.e("SearchHistory", "Lỗi khi lưu lịch sử tìm kiếm", e)
+            }
+        }
+    }
+
+    // Lấy gợi ý tìm kiếm
+    private suspend fun fetchSearchSuggestions(query: String) {
+        try {
+            if (query.isBlank()) {
+                _state.value = _state.value.copy(searchSuggestions = emptyList())
+                return
+            }
+
+            // Lấy gợi ý từ tên sản phẩm trong Firestore
+            val suggestionsSnapshot = db.collection("products")
+                .orderBy("name")
+                .startAt(query)
+                .endAt(query + "\uf8ff")
+                .limit(5)
+                .get()
+                .await()
+
+            val suggestions = suggestionsSnapshot.documents
+                .mapNotNull { it.getString("name") }
+                .filter { it.lowercase().startsWith(query.lowercase()) }
+                .distinct()
+                .take(5)
+
+            _state.value = _state.value.copy(searchSuggestions = suggestions)
+        } catch (e: Exception) {
+            Log.e("SearchSuggestions", "Lỗi khi lấy gợi ý tìm kiếm", e)
+        }
+    }
+
+    // Áp dụng bộ lọc nâng cao
+    fun applyFilter(filter: ProductFilter) {
+        viewModelScope.launch {
+            try {
+                _state.value = _state.value.copy(isLoading = true)
+                
+                var filteredProducts = _state.value.products
+
+                // Áp dụng các bộ lọc
+                filteredProducts = filteredProducts.filter { product ->
+                    val priceInRange = product.price.toFloat() in filter.priceRange
+                    val meetsRating = product.rating >= filter.rating
+                    val inCategory = filter.categories.isEmpty() || 
+                        filter.categories.contains(product.categoryId)
+                    
+                    priceInRange && meetsRating && inCategory
+                }
+
+                // Áp dụng sắp xếp
+                filteredProducts = when (filter.sortBy) {
+                    SortOption.PRICE_LOW_TO_HIGH -> filteredProducts.sortedBy { it.price }
+                    SortOption.PRICE_HIGH_TO_LOW -> filteredProducts.sortedByDescending { it.price }
+                    SortOption.RATING -> filteredProducts.sortedByDescending { it.rating }
+                    SortOption.NEWEST -> filteredProducts.sortedByDescending { it.createdAt }
+                    else -> filteredProducts
+                }
+
+                _state.value = _state.value.copy(
+                    filteredProducts = filteredProducts,
+                    currentFilter = filter,
+                    isLoading = false
+                )
+            } catch (e: Exception) {
+                Log.e("ProductFilter", "Lỗi khi áp dụng bộ lọc", e)
+                _state.value = _state.value.copy(isLoading = false)
+            }
         }
     }
 
     fun searchProducts(query: String) {
-        // Hủy job tìm kiếm cũ nếu có
         searchJob?.cancel()
         
-        // Cập nhật searchQuery trong state
         _state.value = _state.value.copy(searchQuery = query)
         
-        // Nếu query rỗng, xóa kết quả tìm kiếm
         if (query.isBlank()) {
-            _state.value = _state.value.copy(searchResults = emptyList())
+            _state.value = _state.value.copy(
+                searchResults = emptyList(),
+                searchSuggestions = emptyList()
+            )
             return
         }
 
-        Log.d("ProductSearch", "Bắt đầu tìm kiếm với query: $query")
-        
-        // Tạo job tìm kiếm mới với debounce
         searchJob = viewModelScope.launch {
             kotlinx.coroutines.delay(searchDelay)
             
             try {
-                // Chuyển query về chữ thường để tìm kiếm
-                val lowercaseQuery =  query.lowercase()
-                Log.d("ProductSearch", "Query sau khi xử lý: $lowercaseQuery")
-
-                // Thực hiện tìm kiếm trên Firestore
+                _state.value = _state.value.copy(isLoading = true)
+                
+                // Lấy gợi ý tìm kiếm
+                fetchSearchSuggestions(query)
+                
+                val lowercaseQuery = query.lowercase().trim()
+                
+                // Thực hiện tìm kiếm
                 val searchSnapshot = db.collection("products")
-                    .orderBy("name")
-                    .whereGreaterThanOrEqualTo("name", query)
-                    .whereLessThanOrEqualTo("name", query + "\uf8ff")
                     .get()
                     .await()
                 
-                Log.d("ProductSearch", "Số lượng documents tìm thấy: ${searchSnapshot.size()}")
-                
                 val searchResults = searchSnapshot.documents.mapNotNull { document ->
                     val product = document.toObject(ProductModel::class.java)?.copy(id = document.id)
-                    Log.d("ProductSearch", "Tìm thấy sản phẩm: ${product?.name} (${product?.id})")
-                    product
+                    if (product?.name?.lowercase()?.contains(lowercaseQuery) == true) {
+                        product
+                    } else {
+                        null
+                    }
                 }
                 
-                Log.d("ProductSearch", "Kết quả tìm kiếm: ${searchResults.map { it.name }}")
-                Log.d("ProductSearch", "Tổng số kết quả: ${searchResults.size}")
+                // Sắp xếp kết quả
+                val sortedResults = searchResults.sortedWith(compareBy(
+                    { !it.name.lowercase().startsWith(lowercaseQuery) },
+                    { it.name.lowercase() }
+                ))
                 
-                // Cập nhật kết quả tìm kiếm trong state
-                _state.value = _state.value.copy(searchResults = searchResults)
+                // Lưu lịch sử tìm kiếm
+                saveSearchHistory(query)
+                
+                _state.value = _state.value.copy(
+                    searchResults = sortedResults,
+                    isLoading = false
+                )
             } catch (e: Exception) {
                 Log.e("ProductSearch", "Lỗi khi tìm kiếm sản phẩm", e)
-                Log.e("ProductSearch", "Chi tiết lỗi: ${e.message}")
-                _state.value = _state.value.copy(searchResults = emptyList())
+                _state.value = _state.value.copy(
+                    searchResults = emptyList(),
+                    isLoading = false
+                )
             }
         }
     }
