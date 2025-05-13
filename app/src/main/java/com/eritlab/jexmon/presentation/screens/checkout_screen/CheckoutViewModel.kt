@@ -16,6 +16,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -162,13 +163,14 @@ class CheckoutViewModel @Inject constructor(
     }
 
 
-    fun fetchShippingAddress() {
+    fun fetchDefaultShippingAddress() {
         val userId = auth.currentUser?.uid ?: return
 
         _isLoading.value = true
 
         db.collection("address")
             .whereEqualTo("iduser", userId)
+            .whereEqualTo("isDefault", true)
             .get()
             .addOnSuccessListener { result ->
                 if (!result.isEmpty) {
@@ -178,12 +180,12 @@ class CheckoutViewModel @Inject constructor(
                         diachi = document.getString("diachi") ?: "",
                         sdt = document.getString("sdt") ?: "",
                         name = document.getString("name") ?: "",
-                        iduser = document.getString("iduser") ?: ""
+                        iduser = document.getString("iduser") ?: "",
+                        isDefault = document.getBoolean("isDefault") ?: false
                     )
-                    setShippingAddress(address) // <<< THÊM DÒNG NÀY
-
+                    _shippingAddress.value = address
                 } else {
-                    _error.value = "Không tìm thấy địa chỉ giao hàng"
+                    _error.value = "Không tìm thấy địa chỉ mặc định"
                 }
                 _isLoading.value = false
             }
@@ -422,6 +424,7 @@ class CheckoutViewModel @Inject constructor(
                     val order = OrderModel( // Tạo order cho COD
                         userId = userId,
                         items = cartItems,
+                        shippingAddress = shippingAddress,
                         paymentMethod = paymentMethod,
                         subtotal = _subtotal.value, // Tổng tiền hàng gốc
                         discount = discount.value, // Số tiền giảm giá voucher
@@ -460,6 +463,7 @@ class CheckoutViewModel @Inject constructor(
                 val order = OrderModel(
                     userId = userId,
                     items = cartItems,
+                    shippingAddress = shippingAddress,
                     paymentMethod = paymentMethod,
                     subtotal = _subtotal.value, // Tổng tiền hàng gốc
                     discount = discount.value, // Số tiền giảm giá voucher
@@ -480,7 +484,7 @@ class CheckoutViewModel @Inject constructor(
                 // *** BƯỚC QUAN TRỌNG: GỌI BACKEND ĐỂ LẤY ZALOPAY TOKEN ***
                 // Sử dụng suspend function createOrder() của bạn
                 val zpTransToken = createOrder(
-                    amount = _discountproduct.value.toLong()  , // Sử dụng tổng tiền cuối cùng để tạo order ZaloPay
+                    amount = _discountproduct.value.toLong(), // Sử dụng tổng tiền cuối cùng để tạo order ZaloPay
                     description = "Thanh toán đơn hàng ${orderId}"
                 )
 
@@ -579,48 +583,85 @@ class CheckoutViewModel @Inject constructor(
     }
     // suspend function tạo order ZaloPay (gọi backend)
     private suspend fun createOrder(amount: Long, description: String): String {
-        return withContext(Dispatchers.IO) { // Đảm bảo chạy trên IO thread
-            try {
-                val createOrder = CreateOrder() // Lớp gọi API backend của bạn
-                val jsonResult = createOrder.createOrder(amount.toString()) // Gọi hàm API của bạn
+        Log.d("ZaloPayRequest", "amount: $amount, description: $description")
+        return withContext(Dispatchers.IO) {
+            var retryCount = 0
+            val maxRetries = 3
+            var lastException: Exception? = null
 
-                // Log response để debug
-                android.util.Log.d("ZaloPay API Response", "Response from ZaloPay API: $jsonResult")
+            while (retryCount < maxRetries) {
+                try {
+                    val createOrder = CreateOrder()
+                    val jsonResult = createOrder.createOrder(amount.toString())
+                    Log.d("ZaloPay API Response", "Response from ZaloPay API: $jsonResult")
 
-                // Phân tích kết quả từ backend để lấy token
-                when {
-                    jsonResult == null -> {
-                        android.util.Log.e("ZaloPay API Response", "API response is null")
-                        throw Exception("Không thể tạo đơn hàng ZaloPay: Kết quả trả về null")
-                    }
-                    !jsonResult.has("return_code") || jsonResult.getInt("return_code") != 1
-                        -> {
-                        // Xử lý lỗi từ API backend của bạn (returncode != 1 là lỗi)
-                        val returnCode = if (jsonResult.has("return_code")) jsonResult.getInt("return_code") else -99
-                        val returnMessage = if (jsonResult.has("return_message")) jsonResult.getString("return_message") else "Lỗi không rõ"
-                        android.util.Log.e("ZaloPay API Response", "API returned error: Code $returnCode, Message: $returnMessage")
-                        throw Exception("Lỗi từ API backend: $returnMessage (Code: $returnCode)")
-                    }
-                    !jsonResult.has("zp_trans_token") -> {
-                        android.util.Log.e("ZaloPay API Response", "Response does not contain zp_trans_token")
-                        throw Exception("Phản hồi từ backend không chứa token thanh toán ZaloPay")
-                    }
-                    else -> {
-                        val zpTransToken = jsonResult.getString("zp_trans_token")
-                        if (zpTransToken.isNullOrEmpty()) {
-                            android.util.Log.e("ZaloPay API Response", "zp_trans_token is null or empty")
-                            throw Exception("Token thanh toán ZaloPay không hợp lệ từ backend")
+                    when {
+                        jsonResult == null -> {
+                            Log.e("ZaloPay API Response", "API response is null")
+                            throw Exception("Không thể tạo đơn hàng ZaloPay: Kết quả trả về null")
                         }
-                        android.util.Log.d("ZaloPay API Response", "Successfully created order with token: $zpTransToken")
-                        zpTransToken // Trả về token
+                        !jsonResult.has("return_code") || jsonResult.getInt("return_code") != 1 -> {
+                            val returnCode = if (jsonResult.has("return_code")) jsonResult.getInt("return_code") else -99
+                            val returnMessage = if (jsonResult.has("return_message")) jsonResult.getString("return_message") else "Lỗi không rõ"
+                            Log.e("ZaloPay API Response", "API returned error: Code $returnCode, Message: $returnMessage")
+                            
+                            // Nếu là lỗi timeout hoặc network, thử lại
+                            if (returnCode == -99) {
+                                lastException = Exception("Lỗi từ API backend: $returnMessage (Code: $returnCode)")
+                                retryCount++
+                                if (retryCount < maxRetries) {
+                                    delay(1000L * retryCount) // Tăng thời gian chờ giữa các lần retry
+                                    continue
+                                }
+                            }
+                            throw Exception("Lỗi từ API backend: $returnMessage (Code: $returnCode)")
+                        }
+                        !jsonResult.has("zp_trans_token") -> {
+                            Log.e("ZaloPay API Response", "Response does not contain zp_trans_token")
+                            throw Exception("Phản hồi từ backend không chứa token thanh toán ZaloPay")
+                        }
+                        else -> {
+                            val zpTransToken = jsonResult.getString("zp_trans_token")
+                            if (zpTransToken.isNullOrEmpty()) {
+                                Log.e("ZaloPay API Response", "zp_trans_token is null or empty")
+                                throw Exception("Token thanh toán ZaloPay không hợp lệ từ backend")
+                            }
+                            Log.d("ZaloPay API Response", "Successfully created order with token: $zpTransToken")
+                            return@withContext zpTransToken
+                        }
                     }
+                } catch (e: Exception) {
+                    lastException = e
+                    Log.e("ZaloPay API Response", "Exception calling backend API: ${e.message}", e)
+                    
+                    // Nếu là lỗi timeout hoặc network, thử lại
+                    if (e is java.io.InterruptedIOException || e.cause is okhttp3.internal.http2.StreamResetException) {
+                        retryCount++
+                        if (retryCount < maxRetries) {
+                            delay(1000L * retryCount)
+                            continue
+                        }
+                    }
+                    throw Exception("Lỗi gọi API backend: ${e.message ?: "Lỗi không xác định"}")
                 }
-            } catch (e: Exception) {
-                android.util.Log.e("ZaloPay API Response", "Exception calling backend API: ${e.message}", e)
-                throw Exception("Lỗi gọi API backend: ${e.message ?: "Lỗi không xác định"}")
             }
+            
+            // Nếu đã retry hết số lần cho phép
+            throw lastException ?: Exception("Không thể tạo đơn hàng ZaloPay sau $maxRetries lần thử")
         }
     }
 
+    fun increaseSoldForOrder(cartItems: List<CartItem>) {
+        val db = FirebaseFirestore.getInstance()
+        cartItems.forEach { item ->
+            val productRef = db.collection("products").document(item.productId)
+            db.runTransaction { transaction ->
+                val snapshot = transaction.get(productRef)
+                val currentSold = snapshot.getLong("sold") ?: 0
+                transaction.update(productRef, "sold", currentSold + item.quantity)
+                Log.d("CheckoutViewModel", "Updated sold for product ${item.productId}: ${currentSold + item.quantity}")
+            }
+        }
+    }
 
 }

@@ -6,14 +6,15 @@ import com.eritlab.jexmon.presentation.graphs.home_graph.ShopHomeScreen
 sealed class BottomNavItem(val tittle: String, val icon: Int, val route: String) {
     object HomeNav : BottomNavItem(
         tittle = "Home",
-        icon = R.drawable.shop_icon,
+        icon = R.drawable.bill_icon,
         route = ShopHomeScreen.DashboardScreen.route
     )
 
     object FavouriteNav : BottomNavItem(
-        tittle = "Favourite",
-        icon = R.drawable.heart_icon,
-        route = ShopHomeScreen.FavouriteScreen.route
+        tittle = "Brands",
+        icon = R.drawable.lgoo,
+        route =ShopHomeScreen.BrandsHomeScreen.createRoute("all")
+
     )
 
     object ChatNav : BottomNavItem(

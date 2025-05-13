@@ -1,6 +1,7 @@
 package com.eritlab.jexmon.presentation.screens.cart_screen.component
 
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -37,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -53,7 +55,6 @@ import com.eritlab.jexmon.presentation.ui.theme.PrimaryLightColor
 import com.eritlab.jexmon.presentation.ui.theme.TextColor
 import java.text.NumberFormat
 import java.util.Locale
-
 
 @Composable
 fun CartScreen(
@@ -74,6 +75,7 @@ fun CartScreen(
     }
 
     var itemDrag by remember { mutableStateOf(0f) }
+    val context = LocalContext.current
     val cartItems by viewModel.cartItems
     val totalAmount by viewModel.totalAmount
 
@@ -393,8 +395,16 @@ fun CartScreen(
                         .width(150.dp)
                 ) {
                     CustomDefaultBtn(shapeSize = 15f, btnText = "Mua Hàng") {
-                        onNavigateToCheckout(
-                            cartItems
+                        // Kiểm tra số lượng tất cả sản phẩm trong giỏ hàng
+                        viewModel.checkAllCartItems(
+                            onSuccess = {
+                                // Khi kiểm tra thành công và đã cập nhật số lượng trong kho
+                                onNavigateToCheckout(cartItems)
+                            },
+                            onError = { errorMessage ->
+                                // Hiển thị thông báo lỗi bằng Toast
+                                Toast.makeText(context, errorMessage, Toast.LENGTH_SHORT).show()
+                            }
                         )
                     }
                 }

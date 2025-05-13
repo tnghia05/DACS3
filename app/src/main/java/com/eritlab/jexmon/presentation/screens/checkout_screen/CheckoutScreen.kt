@@ -67,7 +67,7 @@ fun CheckoutScreen(
     var zpTransToken by remember { mutableStateOf("") } // Token cho ZaloPay
     LaunchedEffect(Unit) {
         viewModel.fetchCartItems()
-        viewModel.fetchShippingAddress() // <<< GỌI THÊM DÒNG NÀY
+        viewModel.fetchDefaultShippingAddress() // <<< GỌI THÊM DÒNG NÀY
         viewModel.fetchSelectedVoucher() // <<< Thêm dòng này
 
 
@@ -120,6 +120,7 @@ fun CheckoutScreen(
                             Log.d("CheckoutScreen", "ZaloPay SUCCESS: $transactionId, $transToken, $appTransID")
                             // Báo cho ViewModel kết quả thành công
                          viewModel.handleZaloPayResult(null, transToken, appTransID)
+                            viewModel.increaseSoldForOrder(cartItems)
                             navController.navigate(DetailScreen.PaymentSuccessScreen.route)
                             // ViewModel sẽ xử lý logic sa thành công (xóa cart, update order, navigate)
                         }
@@ -264,6 +265,8 @@ fun CheckoutScreen(
                                 onSuccess = {
                                     // Callback này sẽ được gọi từ ViewModel nếu KHÔNG phải ZaloPay
                                     // hoặc từ ZaloPayListener -> ViewModel -> Composable nếu là ZaloPay THÀNH CÔNG.
+                                            viewModel.increaseSoldForOrder(cartItems)
+
                                     Log.d("CheckoutScreen", "Payment process successful (Callback). Navigating...")
                                     navController.navigate("order_success_screen") // Điều hướng đến màn hình thành công
                                 },

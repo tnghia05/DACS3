@@ -5,6 +5,7 @@ import com.eritlab.jexmon.common.Constrains
 sealed class DetailScreen(val route: String) {
 
     object VoucherScreen : DetailScreen("voucher_screen")
+    object ShippingAddressScreen : DetailScreen("shipping_address_screen")
     object CartScreen : DetailScreen("cart_screen")
     object NotificationScreen : DetailScreen("notification_screen")
     object CheckoutScreen : DetailScreen("checkout_screen")

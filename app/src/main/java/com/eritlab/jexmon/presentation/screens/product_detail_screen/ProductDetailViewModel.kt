@@ -10,6 +10,7 @@ import androidx.lifecycle.viewModelScope
 import com.eritlab.jexmon.common.Constrains
 import com.eritlab.jexmon.common.Resource
 import com.eritlab.jexmon.domain.model.CartItem
+import com.eritlab.jexmon.domain.model.ProductModel
 import com.eritlab.jexmon.domain.model.ReviewModel
 import com.eritlab.jexmon.domain.use_case.get_product_detail.GetProductDetailUseCase
 import com.google.firebase.Timestamp
@@ -41,6 +42,10 @@ class ProductDetailViewModel @Inject constructor(
     // State cho quá trình gửi bình luận mới
     private val _reviewSubmissionState = mutableStateOf(ReviewSubmissionState())
     val reviewSubmissionState: State<ReviewSubmissionState> = _reviewSubmissionState
+
+    // Thêm state cho related products
+    private val _relatedProducts = mutableStateOf<List<ProductModel>>(emptyList())
+    val relatedProducts: State<List<ProductModel>> = _relatedProducts
 
     // Data class cho trạng thái gửi bình luận
     data class ReviewSubmissionState(
@@ -350,5 +355,28 @@ class ProductDetailViewModel @Inject constructor(
     // Hàm để reset trạng thái gửi đánh giá (gọi từ UI sau khi hiển thị thông báo thành công/lỗi)
     fun resetReviewSubmissionState() {
         _reviewSubmissionState.value = ReviewSubmissionState()
+    }
+
+    // Hàm lấy sản phẩm liên quan
+    fun getRelatedProducts(brandId: String, currentProductId: String) {
+        viewModelScope.launch {
+            try {
+                val db = FirebaseFirestore.getInstance()
+                val querySnapshot = db.collection("products")
+                    .whereEqualTo("brandId", brandId)
+                    .whereNotEqualTo("id", currentProductId) // Loại bỏ sản phẩm hiện tại
+                    .limit(6) // Giới hạn 6 sản phẩm
+                    .get()
+                    .await()
+
+                val relatedProductsList = querySnapshot.documents.mapNotNull { document ->
+                    document.toObject(ProductModel::class.java)?.copy(id = document.id)
+                }
+
+                _relatedProducts.value = relatedProductsList
+            } catch (e: Exception) {
+                Log.e("ProductDetailViewModel", "Error fetching related products", e)
+            }
+        }
     }
 }

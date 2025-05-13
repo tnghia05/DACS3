@@ -58,7 +58,12 @@ fun RootNavigationGraph(navHostController: NavHostController, context: Context,
 
 
                 popBack = { navHostController.popBackStack() },
-                onNavigateToCart = { navHostController.navigate(DetailScreen.CartScreen.route) }
+                onNavigateToCart = { navHostController.navigate(DetailScreen.CartScreen.route) },
+                onNavigateToProduct = { newProductId ->
+                    navHostController.navigate("${DetailScreen.ProductDetailScreen.route}/$newProductId")
+
+//                    navController.navigate("${DetailScreen.ProductDetailScreen.route}/$newProductId")
+                }
 
             )
         }

@@ -2,6 +2,7 @@ package com.eritlab.jexmon.presentation.graphs.home_graph
 
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
@@ -17,6 +18,7 @@ import com.eritlab.jexmon.presentation.screens.dashboard_screen.component.Dashbo
 import com.eritlab.jexmon.presentation.screens.don_da_mua.DonMua
 import com.eritlab.jexmon.presentation.screens.favourite_screen.component.FavouriteScreen
 import com.eritlab.jexmon.presentation.screens.products.ProductsHome
+import com.eritlab.jexmon.presentation.screens.profile_screen.component.EditProfileScreen
 import com.eritlab.jexmon.presentation.screens.profile_screen.component.ProfileScreen
 
 @Composable
@@ -142,8 +144,13 @@ fun HomeNavGraph(navHostController: NavHostController) {
             )
         }
 
-
-
+        composable(
+            route = "profile_detail/{uid}",
+            arguments = listOf(navArgument("uid") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val uid = backStackEntry.arguments?.getString("uid") ?: ""
+            EditProfileScreen(uid = uid)
+        }
 
     }
 }

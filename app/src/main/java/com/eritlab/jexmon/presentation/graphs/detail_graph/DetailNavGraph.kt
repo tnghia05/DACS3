@@ -14,6 +14,7 @@ import com.eritlab.jexmon.presentation.graphs.Graph
 import com.eritlab.jexmon.presentation.screens.cart_screen.component.CartScreen
 import com.eritlab.jexmon.presentation.screens.checkout_screen.CheckoutScreen
 import com.eritlab.jexmon.presentation.screens.checkout_screen.CheckoutViewModel
+import com.eritlab.jexmon.presentation.screens.checkout_screen.ShippingAddressScreen
 import com.eritlab.jexmon.presentation.screens.checkout_screen.VoucherScreen
 import com.eritlab.jexmon.presentation.screens.notification_screen.component.NotificationScreen
 import com.eritlab.jexmon.presentation.screens.product_detail_screen.ProductDetailViewModel
@@ -82,9 +83,18 @@ fun NavGraphBuilder.detailNavGraph(navController: NavHostController) {
                 productId = productId,
                 viewModel = hiltViewModel<ProductDetailViewModel>(),
                 popBack = { navController.popBackStack() },
-                onNavigateToCart = { navController.navigate(DetailScreen.CartScreen.route) }
+                onNavigateToCart = { navController.navigate(DetailScreen.CartScreen.route) },
+                onNavigateToProduct = { newProductId -> 
+                    navController.navigate("${DetailScreen.ProductDetailScreen.route}/$newProductId")
+                }
             )
         }   
+        composable(DetailScreen.ShippingAddressScreen.route) {
+            ShippingAddressScreen(
+                navController = navController,
+                onBackClick = { navController.popBackStack() }
+            )
+        }
 
 
 

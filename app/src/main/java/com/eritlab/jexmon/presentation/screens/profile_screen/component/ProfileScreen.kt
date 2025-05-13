@@ -3,6 +3,7 @@ package com.eritlab.jexmon.presentation.screens.profile_screen.component
 import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,16 +14,18 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.navigation.NavHostController
+import coil.compose.rememberAsyncImagePainter
 import com.eritlab.jexmon.R
 import com.eritlab.jexmon.presentation.common.component.DefaultBackArrow
 import com.eritlab.jexmon.presentation.graphs.admin_graph.AdminScreen
@@ -40,6 +44,8 @@ import com.eritlab.jexmon.presentation.graphs.home_graph.ShopHomeScreen
 import com.eritlab.jexmon.presentation.ui.theme.PrimaryColor
 import com.eritlab.jexmon.presentation.ui.theme.TextColor
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
 
 @Composable
 fun ProfileScreen(
@@ -51,6 +57,9 @@ fun ProfileScreen(
 
     val currentUser = FirebaseAuth.getInstance().currentUser
     val isAdmin = remember { mutableStateOf(false) }
+    val uid = currentUser?.uid ?: ""
+    var avatarUrl by remember { mutableStateOf<String?>(null) }
+    val db = FirebaseFirestore.getInstance()
 
     // ✅ Kiểm tra quyền admin khi màn hình được khởi tạo
     LaunchedEffect(Unit) {
@@ -59,6 +68,14 @@ fun ProfileScreen(
         }
         Log.d("ProfileScreen", "isAdmin: ${isAdmin.value}")
     }
+
+    LaunchedEffect(uid) {
+        if (uid.isNotEmpty()) {
+            val doc = db.collection("user").document(uid).get().await()
+            avatarUrl = doc.getString("avatarUrl")
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -92,32 +109,31 @@ fun ProfileScreen(
         ConstraintLayout(
             modifier = Modifier.fillMaxWidth()
         ) {
-            val (image, cameraIcon) = createRefs()
-            Image(
-                painter = painterResource(id = R.drawable.profile_image),
-                contentDescription = "Profile Image",
+            val (image) = createRefs()
+            Box(
                 modifier = Modifier
-                    .clip(CircleShape)
+                    .size(110.dp)
                     .constrainAs(image) {
                         linkTo(start = parent.start, end = parent.end)
                     }
-            )
-            IconButton(
-                onClick = { /* Thay đổi ảnh đại diện */ },
-                modifier = Modifier.constrainAs(cameraIcon) {
-                    bottom.linkTo(image.bottom)
-                    end.linkTo(image.end)
-                }
+                    .border(
+                        width = 4.dp,
+                        color = Color(0xFFFF6600),
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.camera_icon),
-                    contentDescription = "Change Picture",
-                    tint = MaterialTheme.colors.PrimaryColor
+                Image(
+                    painter = rememberAsyncImagePainter(avatarUrl ?: R.drawable.user),
+                    contentDescription = "Profile Image",
+                    modifier = Modifier
+                        .size(100.dp)
+                        .clip(CircleShape)
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(60.dp))
+        Spacer(modifier = Modifier.height(30.dp))
         LaunchedEffect(Unit) {
             Log.d("Navigation", "🟢 Current Destination: ${navController.currentDestination?.route}")
         }
@@ -141,7 +157,9 @@ fun ProfileScreen(
 
 
         // Các mục khác
-        ProfileOption(icon = R.drawable.user_icon, label = "Profile Picture") { }
+        ProfileOption(icon = R.drawable.user_icon, label = "Profile") {
+            navController.navigate("profile_detail/$uid")
+        }
         Spacer(modifier = Modifier.height(15.dp))
         ProfileOption(icon = R.drawable.bell, label = "Đơn Mua",
             onClick ={
@@ -154,7 +172,7 @@ fun ProfileScreen(
         Spacer(modifier = Modifier.height(15.dp))
         ProfileOption(icon = R.drawable.settings, label = "Settings") { }
         Spacer(modifier = Modifier.height(15.dp))
-        ProfileOption(icon = R.drawable.question_mark, label = "Help Center") { }
+        ProfileOption(icon = R.drawable.question_mark, label = "ChatBot") { }
         Spacer(modifier = Modifier.height(15.dp))
         ProfileOption(icon = R.drawable.log_out, label = "Logout") { }
     }

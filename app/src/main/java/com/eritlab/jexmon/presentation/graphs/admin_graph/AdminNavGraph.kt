@@ -12,6 +12,9 @@ import com.eritlab.jexmon.presentation.screens.admin.Brand.EditBrandScreen
 import com.eritlab.jexmon.presentation.screens.admin.BrandScreen
 import com.eritlab.jexmon.presentation.screens.admin.category.AddProductScreen
 import com.eritlab.jexmon.presentation.screens.admin.category.CategoryScreen
+import com.eritlab.jexmon.presentation.screens.admin.category.EditCategoryScreen
+import com.eritlab.jexmon.presentation.screens.admin.order.OrderDetailScreen
+import com.eritlab.jexmon.presentation.screens.admin.order.OrderManagementScreen
 
 fun NavGraphBuilder.adminNavGraph(navHostController: NavHostController) {
     Log.d("Navigation", "AdminNavGraph is being set up")
@@ -37,14 +40,7 @@ fun NavGraphBuilder.adminNavGraph(navHostController: NavHostController) {
 
             // Extract the brandId from the backStackEntry
             val brandId = backStackEntry.arguments?.getString("brandId")
-
-            // Check if brandId is null and handle accordingly
-            brandId?.let {
-                EditBrandScreen(navHostController, it)
-            } ?: run {
-                Log.e("Navigation", "Brand ID is missing!")
-                // You can add fallback behavior, like navigating back or showing an error
-            }
+            EditBrandScreen(navHostController, brandId ?: "")
         }
         composable(AdminScreen.CategoryScreen.route) {
             Log.d("Navigation", "CategoryScreen composable created")
@@ -52,34 +48,31 @@ fun NavGraphBuilder.adminNavGraph(navHostController: NavHostController) {
         }
         composable(AdminScreen.AddCategoryScreen.route) {
             Log.d("Navigation", "AddCategoryScreen composable created")
-
-            AddProductScreen (navHostController)
-
-            }
-        composable("admin_edit_category_screen/{categoryId}") { backStackEntry ->
-            Log.d("Navigation", "EditBrandScreen composable created")
-
-            // Extract the brandId from the backStackEntry
-
+            AddProductScreen(navHostController)
+        }
+        composable(AdminScreen.EditCategoryScreen.route) { backStackEntry ->
+            Log.d("Navigation", "EditCategoryScreen composable created")
             val categoryId = backStackEntry.arguments?.getString("categoryId")
-            // Check if brandId is null and handle accordingly
             categoryId?.let {
-                AddProductScreen(navHostController, it)
-            } ?: run {
-                Log.e("Navigation", "Brand ID is missing!")
-                // You can add fallback behavior, like navigating back or showing an error
+                EditCategoryScreen( navHostController, categoryId = it)
             }
-                ?: run {
-                    Log.e("Navigation", "Brand ID is missing!")
-                    // You can add fallback behavior, like navigating back or showing an error
-                }
+        }
+        composable(AdminScreen.OrderManagementScreen.route) {
+            Log.d("Navigation", "OrderManagementScreen composable created")
+            OrderManagementScreen(
+                navController = navHostController,
+                onBackBtnClick = { navHostController.popBackStack() }
+            )
+        }
+        composable(AdminScreen.OrderDetailScreen.route) { backStackEntry ->
+            val orderId = backStackEntry.arguments?.getString("orderId")
+            orderId?.let {
+                OrderDetailScreen(
+                    navController = navHostController,
+                    orderId = it,
+                    onBackClick = { navHostController.navigateUp() }
+                )
             }
-
-
-
-
-
-
-
+        }
     }
 }

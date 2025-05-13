@@ -6,7 +6,7 @@ data class OrderModel(
     val id: String = "",
     val userId: String = "",
     val items: List<CartItem> = emptyList(),
-    val shippingAddress: ShippingAddress = ShippingAddress(),
+    val shippingAddress: AddressModel = AddressModel(),
     val paymentMethod: String = "", // COD, MOMO, ZALOPAY, etc.
     val status: String = "PENDING", // Chua xac nhan, Da xac nhan, Dang giao, Da giao, Da huy
     val paymentStatus: String = "UNPAID", // UNPAID, PAID, CANCELED
@@ -19,12 +19,4 @@ data class OrderModel(
     val updatedAt: Timestamp = Timestamp.now()
 )
 
-data class ShippingAddress(
-    val fullName: String = "",
-    val phoneNumber: String = "",
-    val address: String = "",
-    val city: String = "",
-    val district: String = "",
-    val ward: String = "",
-    val isDefault: Boolean = false
-)
+

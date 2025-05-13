@@ -1,8 +1,6 @@
 package com.eritlab.jexmon.presentation.screens.product_detail_screen.component
 
 // ... các imports khác từ Jetpack Compose, Material ...
-import android.Manifest
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.util.Log
 import android.widget.Toast
@@ -42,8 +40,6 @@ import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -66,9 +62,9 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
@@ -82,8 +78,7 @@ import com.eritlab.jexmon.presentation.ui.theme.PrimaryColor
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Locale
+import kotlinx.coroutines.tasks.await
 
 @Composable
 fun ProductDetailScreen(
@@ -91,7 +86,8 @@ fun ProductDetailScreen(
     popBack: () -> Unit,
     onNavigateToCart: () -> Unit,
     viewModel: ProductDetailViewModel = hiltViewModel(),
-    cartViewModel: CartViewModel = hiltViewModel()
+    cartViewModel: CartViewModel = hiltViewModel(),
+    onNavigateToProduct: (String) -> Unit
 ) {
     val currentUser = FirebaseAuth.getInstance().currentUser
     if (currentUser == null) {
@@ -106,7 +102,8 @@ fun ProductDetailScreen(
         productId = productId,
         popBack = popBack,
         onNavigateToCart = onNavigateToCart,
-        userId = currentUser.uid
+        userId = currentUser.uid,
+        onNavigateToProduct = onNavigateToProduct
     )
     //gọi thêm hàm bottom sheet
 
@@ -121,7 +118,8 @@ fun ProductDetailContent(
     productId: String,
     popBack: () -> Unit,
     onNavigateToCart: () -> Unit,
-    userId: String
+    userId: String,
+    onNavigateToProduct: (String) -> Unit
 )
 {
     val sheetState = rememberModalBottomSheetState(
@@ -216,6 +214,13 @@ fun ProductDetailContent(
         var showReviewsSection by remember { mutableStateOf(false) }
         var showReviewInputForm by remember { mutableStateOf(false) }
 
+        // Gọi lấy sản phẩm liên quan khi có thông tin sản phẩm
+        LaunchedEffect(product.id, product.brandId) {
+            if (!product.brandId.isNullOrEmpty()) {
+                viewModel.getRelatedProducts(product.brandId, product.id)
+            }
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -272,18 +277,49 @@ fun ProductDetailContent(
                     }
 
                     // 🔹 Hình ảnh sản phẩm
-                    selectedPicture?.let { image ->
-                        Image(
-                            painter = rememberAsyncImagePainter(image),
-                            contentDescription = null,
-                            modifier = Modifier.size(250.dp)
-                        )
-                    } ?: Text("Không có ảnh sản phẩm", color = Color.Gray)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(300.dp)
+                            .background(Color(0xFFF5F5F5))
+                    ) {
+                        selectedPicture?.let { image ->
+                            AsyncImage(
+                                model = image,
+                                contentDescription = "Product Image",
+                                contentScale = ContentScale.Fit,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(16.dp)
+                            )
+                        } ?: Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.error),
+                                    contentDescription = "No Image",
+                                    tint = Color.Gray,
+                                    modifier = Modifier.size(48.dp)
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    "Không có ảnh sản phẩm",
+                                    color = Color.Gray,
+                                    fontSize = 16.sp
+                                )
+                            }
+                        }
+                    }
 
 
                     if (product.images.isNotEmpty()) {
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(50.dp),
+                            horizontalArrangement = Arrangement.spacedBy(30.dp),
                             modifier = Modifier.padding(12.dp)
                         ) {
                             product.images.forEach { image ->
@@ -293,7 +329,7 @@ fun ProductDetailContent(
                                         .size(18.dp)
                                         .border(
                                             width = 1.dp,
-                                            color = if (selectedPicture == image) MaterialTheme.colors.primary else Color.Transparent,
+                                            color = if (selectedPicture == image) MaterialTheme.colors.PrimaryColor else Color.Transparent,
                                             shape = RoundedCornerShape(10.dp)
                                         )
                                         .background(Color.White, shape = RoundedCornerShape(10.dp))
@@ -665,6 +701,8 @@ fun ProductDetailContent(
                                     }
                                 }
 
+
+
                                 if (showAllReviews && state.reviews.size > 3) {
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Button(
@@ -702,6 +740,7 @@ fun ProductDetailContent(
                                         }
                                     }
                                 }
+
                             }
                         } else {
                             Box(
@@ -711,6 +750,7 @@ fun ProductDetailContent(
                                 CircularProgressIndicator()
                             }
                         }
+
 
 
                         Spacer(modifier = Modifier.height(8.dp)) // Khoảng cách
@@ -761,6 +801,27 @@ fun ProductDetailContent(
                                 )
                             }
                         }
+                        // --- KẾT THÚC phần ReviewInputForm ---
+                        // Thêm vào ProductDetailContent sau phần reviews
+// ... trong ProductDetailContent ...
+                            // ... phần reviews hiện tại ...
+
+                            Divider(
+                                color = Color.LightGray,
+                                thickness = 8.dp,
+                                modifier = Modifier.padding(vertical = 8.dp)
+                            )
+
+                            // Thêm phần sản phẩm liên quan
+                            val relatedProducts = viewModel.relatedProducts.value
+                        Log.d("ProductDetail", "Related Products: $relatedProducts")
+                            if (relatedProducts.isNotEmpty()) {
+                                RelatedProductsSection(
+                                    products = relatedProducts,
+                                    onProductClick = onNavigateToProduct
+                                )
+                            }
+
 
 
 
@@ -836,7 +897,9 @@ fun ProductDetailContent(
                     availableSizes = availableSizes,
                     availableColors = availableColors,
                     onSizeSelected = { selectedSize = it },
-                    onColorSelected = { selectedColor = it }
+                    onColorSelected = { selectedColor = it },
+                    viewModel = viewModel,
+                    cartViewModel = cartViewModel
                 )
             }
         }
@@ -1028,15 +1091,36 @@ fun BottomSheetContent(
                         .size(36.dp)
                         .border(
                             1.dp,
-                            if (selectedColor == color) MaterialTheme.colors.primary else Color.Transparent,
+                            if (selectedColor == color && stockQuantity != 0) MaterialTheme.colors.primary else Color.Transparent,
                             CircleShape
                         )
                         .background(
-                            Color(android.graphics.Color.parseColor(color)), CircleShape
+                            Color(android.graphics.Color.parseColor(color)).copy(alpha = if (stockQuantity == 0) 0.3f else 1f),
+                            CircleShape
                         )
                         .clip(CircleShape)
-                        .clickable { onColorSelected(color) }
-                )
+                        .then(
+                            if (stockQuantity != 0) {
+                                Modifier.clickable { onColorSelected(color) }
+                            } else {
+                                Modifier
+                            }
+                        )
+                ) {
+                    if (stockQuantity == 0) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "×",
+                                color = Color.White,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
             }
         }
         Divider(
@@ -1126,6 +1210,19 @@ fun BottomSheetContent(
 // 🔹 Composable để hiển thị một mục bình luận (Sử dụng ReviewModel)
 @Composable
 fun ReviewItem(review: ReviewModel) {
+    var avatarUrl by remember { mutableStateOf<String?>(null) }
+    var userName by remember { mutableStateOf<String?>(null) }
+    val db = FirebaseFirestore.getInstance()
+
+    // Lấy avatarUrl và name từ Firestore theo userId
+    LaunchedEffect(review.userId) {
+        if (!review.userId.isNullOrEmpty()) {
+            val doc = db.collection("user").document(review.userId).get().await()
+            avatarUrl = doc.getString("avatarUrl")
+            userName = doc.getString("name")
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -1138,7 +1235,7 @@ fun ReviewItem(review: ReviewModel) {
         ) {
             // Avatar
             Image(
-                painter = rememberAsyncImagePainter(R.drawable.user),
+                painter = rememberAsyncImagePainter(avatarUrl ?: R.drawable.user),
                 contentDescription = "User Avatar",
                 modifier = Modifier
                     .size(35.dp)
@@ -1151,7 +1248,7 @@ fun ReviewItem(review: ReviewModel) {
             // Name and rating in a column
             Column {
                 Text(
-                    text = review.userName,
+                    text = userName ?: review.userName, // Ưu tiên tên lấy từ Firestore, fallback sang tên trong review
                     fontSize = 14.sp,
                     color = Color.Black,
                     fontWeight = FontWeight.Medium
@@ -1186,6 +1283,7 @@ fun ReviewItem(review: ReviewModel) {
             )
         }
 
+        // Images in a row (if any)
         // Images in a row (if any)
         if (!review.images.isNullOrEmpty()) {
             LazyRow(
@@ -1415,6 +1513,108 @@ fun ReviewInputForm(
                 selectedImageUris = emptyList()
                 viewModel.resetReviewSubmissionState()
             }
+        }
+    }
+}
+
+// Thêm composable cho sản phẩm liên quan
+@Composable
+fun RelatedProductsSection(
+    products: List<ProductModel>,
+    onProductClick: (String) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(12.dp)
+    ) {
+        // Tiêu đề
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Các sản phẩm khác Cung Loại",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            Text(
+                text = "Xem tất cả >",
+                fontSize = 14.sp,
+                color = MaterialTheme.colors.PrimaryColor,
+                modifier = Modifier.clickable { /* TODO: Navigate to shop */ }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Grid sản phẩm
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(horizontal = 4.dp)
+        ) {
+            items(products) { product ->
+                RelatedProductItem(product = product, onClick = { onProductClick(product.id) })
+            }
+        }
+    }
+}
+
+@Composable
+fun RelatedProductItem(
+    product: ProductModel,
+    onClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .width(150.dp)
+            .clickable(onClick = onClick)
+            .background(Color.White, RoundedCornerShape(8.dp))
+            .padding(8.dp)
+    ) {
+        // Ảnh sản phẩm
+        AsyncImage(
+            model = product.images.firstOrNull(),
+            contentDescription = null,
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .clip(RoundedCornerShape(8.dp)),
+            contentScale = ContentScale.Crop
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Tên sản phẩm
+        Text(
+            text = product.name,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            fontSize = 14.sp
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        // Giá và đã bán
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            val discountedPrice = product.price * (1 - product.discount.toFloat() / 100)
+            Text(
+                text = "${String.format("%,d", discountedPrice.toLong())}đ",
+                color = Color.Red,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            Text(
+                text = "Đã bán ${product.sold}",
+                fontSize = 12.sp,
+                color = Color.Gray
+            )
         }
     }
 }

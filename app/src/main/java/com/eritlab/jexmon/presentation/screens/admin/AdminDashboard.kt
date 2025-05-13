@@ -39,7 +39,6 @@ fun AdminDashboard(navController: NavHostController) {
         }
     }
     Column(
-
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFFFFF5F5))
@@ -137,6 +136,20 @@ fun AdminDashboard(navController: NavHostController) {
                     .padding(8.dp)
                     .weight(1f)
             ) {
+                GridButton(label = "Manage Orders") {
+                    navController.navigate(AdminScreen.OrderManagementScreen.route)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Row {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp)
+                    .weight(1f)
+            ) {
                 GridButton(label = "Manage Brands") {
                     Log.d("AdminDashboard", "Navigating to: ${AdminScreen.BrandScreen.route}")
                     Log.d("AdminDashboard", "Current Destination: ${navController.currentDestination?.route}")
@@ -151,14 +164,8 @@ fun AdminDashboard(navController: NavHostController) {
                         launchSingleTop = true
                     }
                 }
-
             }
-
-            }
-
-
-        Spacer(modifier = Modifier.height(8.dp))
-        Row {
+            Spacer(modifier = Modifier.width(8.dp))
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -174,9 +181,13 @@ fun AdminDashboard(navController: NavHostController) {
                     // Sau khi vào admin_graph, tiếp tục vào BrandScreen
                     navController.navigate(AdminScreen.CategoryScreen.route) {
                         launchSingleTop = true
-                    }                }
+                    }
+                }
             }
-            Spacer(modifier = Modifier.width(8.dp))
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Row {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -186,6 +197,15 @@ fun AdminDashboard(navController: NavHostController) {
                 GridButton(label = "Manage Reviews") {
                     navController.navigate("manageReviews")
                 }
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp)
+                    .weight(1f)
+            ) {
+                // Empty column for symmetry
             }
         }
     }
@@ -198,10 +218,20 @@ fun GridButton(label: String, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp)
-            .height(100.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFFFFCDD2))
+            .height(56.dp)
+            .shadow(4.dp, RoundedCornerShape(8.dp)),
+        colors = ButtonDefaults.buttonColors(
+            backgroundColor = Color(0xFFB71C1C),
+            contentColor = Color.White
+        ),
+        shape = RoundedCornerShape(8.dp)
     ) {
-        Text(text = label, fontSize = 14.sp, color = Color(0xFFB71C1C))
+        Text(
+            text = label,
+            style = TextStyle(
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold
+            )
+        )
     }
 }

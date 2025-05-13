@@ -77,120 +77,98 @@ import java.util.UUID
 // Hàm lưu sản phẩm chính và stock (Sử dụng await)
 
 @Composable
-fun AddProductScreen(navController: NavController, productId: String? = null) { // Đổi tên Composable và tham số
-    val firestore = remember { FirebaseFirestore.getInstance() } // Sử dụng remember
-    val storage = remember { FirebaseStorage.getInstance() } // Sử dụng remember
+fun AddProductScreen(navController: NavController, productId: String? = null) {
+    val firestore = remember { FirebaseFirestore.getInstance() }
+    val storage = remember { FirebaseStorage.getInstance() }
     val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope() // Khai báo CoroutineScope
+    val coroutineScope = rememberCoroutineScope()
 
     // --- State variables cho thông tin sản phẩm ---
-    var name by remember { mutableStateOf(TextFieldValue("")) } // Load existingName nếu chỉnh sửa
-    var description by remember { mutableStateOf(TextFieldValue("")) } // Load existingDescription
-    var price by remember { mutableStateOf(TextFieldValue("")) } // State riêng cho giá
-    var discount by remember { mutableStateOf(TextFieldValue("")) } // State riêng cho giảm giá
-    var rating by remember { mutableStateOf(TextFieldValue("")) } // State riêng cho đánh giá
-    var imageUrls by remember { mutableStateOf<List<String>>(emptyList()) } // Danh sách URLs ảnh từ Firestore (khi chỉnh sửa)
-    var newImageUris by remember { mutableStateOf<List<Uri>>(emptyList()) } // Danh sách URIs ảnh mới được chọn
+    var name by remember { mutableStateOf(TextFieldValue("")) }
+    var description by remember { mutableStateOf(TextFieldValue("")) }
+    var price by remember { mutableStateOf(TextFieldValue("")) }
+    var discount by remember { mutableStateOf(TextFieldValue("")) }
+    var rating by remember { mutableStateOf(TextFieldValue("")) }
+    var imageUrls by remember { mutableStateOf<List<String>>(emptyList()) }
+    var newImageUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(false) }
 
     // --- State cho Brand ---
     val brandList = remember { mutableStateOf<List<BrandModel>>(emptyList()) }
     val selectedBrand = remember { mutableStateOf<BrandModel?>(null) }
 
     // --- State cho danh sách stock ---
-    val stockList = remember { mutableStateListOf(ProductStock()) } // Bắt đầu với một dòng nhập liệu trống ban đầu
+    val stockList = remember { mutableStateListOf<ProductStock>() }
 
-    // --- State cho loading khi lưu/xóa ---
-    var isLoading by remember { mutableStateOf(false) } // Khai báo state isLoading
+    // --- LaunchedEffect để Load dữ liệu khi ở chế độ chỉnh sửa ---
+    LaunchedEffect(productId) {
+        if (productId != null) {
+            try {
+                // Load dữ liệu sản phẩm chính
+                val productDoc = firestore.collection("products").document(productId).get().await()
+                val product = productDoc.toObject(ProductModel::class.java)
+                
+                if (product != null) {
+                    // Cập nhật các state với dữ liệu sản phẩm
+                    name = TextFieldValue(product.name)
+                    description = TextFieldValue(product.description)
+                    price = TextFieldValue(product.price.toString())
+                    discount = TextFieldValue(product.discount.toString())
+                    rating = TextFieldValue(product.rating.toString())
+                    imageUrls = product.images
+
+                    // Load brands và tìm brand của sản phẩm
+                    val brandsSnapshot = firestore.collection("brands").get().await()
+                    val brands = brandsSnapshot.documents.mapNotNull { it.toObject(BrandModel::class.java) }
+                    brandList.value = brands
+                    selectedBrand.value = brands.find { it.id == product.brandId }
+
+                    // Load stock
+                    val stockSnapshot = firestore.collection("products")
+                        .document(productId)
+                        .collection("stock")
+                        .get()
+                        .await()
+                    
+                    stockList.clear()
+                    stockSnapshot.documents.mapNotNull { 
+                        it.toObject(ProductStock::class.java)
+                    }.let { stocks ->
+                        stockList.addAll(stocks)
+                    }
+                    
+                    // Nếu không có stock nào, thêm một dòng trống
+                    if (stockList.isEmpty()) {
+                        stockList.add(ProductStock())
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("AddProductScreen", "Error loading product data", e)
+                Toast.makeText(context, "Lỗi khi tải dữ liệu sản phẩm", Toast.LENGTH_SHORT).show()
+            }
+        } else {
+            // Nếu là thêm mới, khởi tạo một stock trống
+            stockList.clear()
+            stockList.add(ProductStock())
+            
+            // Load danh sách brands
+            try {
+                val brandsSnapshot = firestore.collection("brands").get().await()
+                val brands = brandsSnapshot.documents.mapNotNull { it.toObject(BrandModel::class.java) }
+                brandList.value = brands
+                if (brands.isNotEmpty()) {
+                    selectedBrand.value = brands[0]
+                }
+            } catch (e: Exception) {
+                Log.e("AddProductScreen", "Error loading brands", e)
+            }
+        }
+    }
 
     // --- Image Picker Launcher (Cho phép chọn nhiều ảnh) ---
     val imagePickerLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.GetMultipleContents()) { uris: List<Uri> ->
         newImageUris = uris // Cập nhật state newImageUris
     }
-
-    // --- LaunchedEffect để Load dữ liệu khi ở chế độ chỉnh sửa ---
-    LaunchedEffect(productId) {
-        if (productId != null) {
-            coroutineScope.launch {
-                try {
-                    // Load dữ liệu sản phẩm chính từ collection "products"
-                    val productDoc = withContext(Dispatchers.IO) {
-                        firestore.collection("products").document(productId).get().await()
-                    }
-                    val product = productDoc.toObject(ProductModel::class.java) // TODO: Sử dụng ProductModel của bạn
-                    if (product != null) {
-                        name = TextFieldValue(product.name)
-                        description = TextFieldValue(product.description)
-                        price = TextFieldValue(product.price.toString())
-                        discount = TextFieldValue(product.discount.toString())
-                        rating = TextFieldValue(product.rating.toString())
-                        imageUrls = product.images // Load danh sách URLs ảnh cũ
-                        // Tìm brand trong brandList và gán vào selectedBrand
-                        // Cần đảm bảo brandList đã load xong HOẶC load brand trước
-                        if (brandList.value.isNotEmpty()) {
-                            selectedBrand.value = brandList.value.find { it.id == product.brandId }
-                        } else {
-                            // Load brand nếu chưa có và gán selectedBrand
-                            val brands = withContext(Dispatchers.IO) {
-                                firestore.collection("brands").get().await().documents.mapNotNull { it.toObject(BrandModel::class.java) }
-                            }
-                            brandList.value = brands
-                            selectedBrand.value = brands.find { it.id == product.brandId }
-                        }
-                    }
-
-                    // Load dữ liệu stock từ subcollection "stock"
-                    val stockDocs = withContext(Dispatchers.IO) {
-                        firestore.collection("products").document(productId).collection("stock").get().await()
-                    }
-                    val stockItems = stockDocs.documents.mapNotNull { it.toObject(ProductStock::class.java) }
-                    stockList.clear() // Xóa các mục mặc định
-                    stockList.addAll(stockItems) // Thêm stock đã load
-                    // Nếu không có stock nào (kể cả sau khi load), thêm một dòng trống
-                    if (stockList.isEmpty()) {
-                        stockList.add(ProductStock())
-                    }
-
-                } catch (e: Exception) {
-                    Log.e("AddProductScreen", "Error loading product or stock", e)
-                    Toast.makeText(context, "Lỗi khi tải dữ liệu sản phẩm", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-    }
-
-    // --- LaunchedEffect để Load danh sách Brand ---
-    LaunchedEffect(Unit) { // Chạy một lần khi Composable được tạo
-        coroutineScope.launch {
-            try {
-                val result = withContext(Dispatchers.IO) {
-                    firestore.collection("brands").get().await()
-                }
-                val brands = result.documents.mapNotNull { it.toObject(BrandModel::class.java) }
-                brandList.value = brands
-                // Nếu đang thêm mới và có brand, chọn brand đầu tiên
-                if (productId == null && selectedBrand.value == null && brands.isNotEmpty()) {
-                    selectedBrand.value = brands[0]
-                }
-                // Nếu đang chỉnh sửa và brandList vừa load xong, cố gắng gán selectedBrand
-                if (productId != null && selectedBrand.value == null && brands.isNotEmpty()) {
-                    // Cần load lại product để biết brandId (hoặc lấy từ state nếu đã load)
-                    val productDoc = withContext(Dispatchers.IO) {
-                        firestore.collection("products").document(productId).get().await()
-                    }
-                    val product = productDoc.toObject(ProductModel::class.java)
-                    if (product != null) {
-                        selectedBrand.value = brands.find { it.id == product.brandId }
-                    }
-                }
-
-                Log.d("AddProductScreen", "Fetched brands: ${brands.map { it.name }}")
-            } catch (e: Exception) {
-                Log.e("AddProductScreen", "Error fetching brands", e)
-                Toast.makeText(context, "Lỗi khi tải danh sách nhãn hàng", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
 
     // --- Layout chính của màn hình ---
     Column(
@@ -230,50 +208,40 @@ fun AddProductScreen(navController: NavController, productId: String? = null) { 
         )
         Spacer(modifier = Modifier.height(8.dp))
 
-        // OutlinedTextField Test - Có vẻ không cần thiết trong màn hình cuối
-        // OutlinedTextField(
-        //     value = description, // Vẫn gán nhầm
-        //     onValueChange = { description = it }, // Vẫn gán nhầm
-        //     label = { Text("Test") },
-        //     modifier = Modifier.fillMaxWidth()
-        // )
-        // Spacer(modifier = Modifier.height(8.dp))
-
         OutlinedTextField(
-            value = price, // <-- Sửa: gán đúng state price
+            value = price,
             onValueChange = { price = it },
             label = { Text("Giá Sản Phẩm") },
             modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number) // Gợi ý bàn phím số
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
         )
         Spacer(modifier = Modifier.height(8.dp))
 
         OutlinedTextField(
-            value = discount, // <-- Sửa: gán đúng state discount
+            value = discount,
             onValueChange = { discount = it },
             label = { Text("Giảm Giá (%) ") },
             modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number) // Gợi ý bàn phím số
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
         )
         Spacer(modifier = Modifier.height(8.dp))
 
         OutlinedTextField(
-            value = rating, // <-- Sửa: gán đúng state rating
+            value = rating,
             onValueChange = { rating = it },
             label = { Text("Đánh Giá") },
             modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number) // Gợi ý bàn phím số
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
         )
         Spacer(modifier = Modifier.height(16.dp)) // Thêm khoảng trống trước phần stock
 
         // --- Tích hợp StockInputSection TẠI ĐÂY ---
         StockInputSection(
-            stockList = stockList, // Truyền mutableStateListOf ProductStock
-            onRemoveItem = { itemToRemove -> stockList.remove(itemToRemove) }, // Định nghĩa logic xóa item
-            onAddItem = { stockList.add(ProductStock()) } // Định nghĩa logic thêm item mới
+            stockList = stockList,
+            onRemoveItem = { itemToRemove -> stockList.remove(itemToRemove) },
+            onAddItem = { stockList.add(ProductStock()) }
         )
         // --- KẾT THÚC TÍCH HỢP StockInputSection ---
-
 
         Spacer(modifier = Modifier.height(16.dp)) // Khoảng trống sau phần stock
 
@@ -314,51 +282,118 @@ fun AddProductScreen(navController: NavController, productId: String? = null) { 
             }
         }
 
-
         Spacer(modifier = Modifier.height(16.dp)) // Khoảng trống trước nút Lưu
 
         // --- Nút Lưu Sản phẩm (Gọi hàm await) ---
         Button(
-            // Đây là nút "Lưu" sản phẩm - Gọi hàm xử lý toàn bộ quá trình bằng await
             onClick = {
-                // Kiểm tra trạng thái loading và khởi chạy coroutine
                 if (!isLoading) {
                     coroutineScope.launch {
-                        isLoading = true // Cập nhật trạng thái loading
+                        isLoading = true
+                        try {
+                            // 1. Validate dữ liệu nhập liệu cơ bản
+                            if (name.text.isBlank()) throw Exception("Tên sản phẩm không được trống")
+                            if (description.text.isBlank()) throw Exception("Mô tả không được trống")
+                            val parsedPrice = price.text.toDoubleOrNull() ?: throw Exception("Giá sản phẩm không hợp lệ")
+                            if (parsedPrice < 0) throw Exception("Giá sản phẩm phải lớn hơn 0")
+                            val parsedDiscount = discount.text.toIntOrNull() ?: throw Exception("Giảm giá không hợp lệ")
+                            if (parsedDiscount < 0 || parsedDiscount > 100) throw Exception("Giảm giá phải từ 0-100%")
+                            val parsedRating = rating.text.toDoubleOrNull() ?: throw Exception("Đánh giá không hợp lệ")
+                            if (parsedRating < 0 || parsedRating > 5) throw Exception("Đánh giá phải từ 0-5 sao")
+                            if (selectedBrand.value?.id == null) throw Exception("Vui lòng chọn nhãn hàng")
 
-                        // GỌI HÀM saveProductAndStock TẠI ĐÂY (Phiên bản await)
-                        saveProductAndStock(
-                            productId = productId, // Truyền productId hiện tại (null nếu thêm mới)
-                            name = name.text, // Lấy dữ liệu từ state
-                            description = description.text, // Lấy dữ liệu từ state
-                            price = price.text, // Lấy dữ liệu từ state
-                            discount = discount.text, // Lấy dữ liệu từ state
-                            rating = rating.text, // Lấy dữ liệu từ state
-                            newImageUris = newImageUris, // Truyền DANH SÁCH URI ảnh MỚI được chọn
-                            currentImageUrls = imageUrls, // Truyền DANH SÁCH URL ảnh CŨ/hiện có
-                            brandId = selectedBrand.value?.id, // Lấy dữ liệu từ state
-                            stockList = stockList.toList(), // Truyền DANH SÁCH stock từ state (chuyển MutableList sang List)
-                            firestore = firestore, // Truyền instance Firestore
-                            storage = storage, // Truyền instance Storage
-                            context = context, // Truyền Context
-                            onSuccess = {
-                                isLoading = false // Kết thúc loading khi thành công
-                                Toast.makeText(context, if (productId == null) "Thêm sản phẩm thành công" else "Cập nhật sản phẩm thành công", Toast.LENGTH_SHORT).show()
-                                navController.popBackStack() // Quay lại màn hình trước
-                            },
-                            onFailure = { errorMessage ->
-                                isLoading = false // Kết thúc loading khi thất bại
-                                Toast.makeText(context, "Lỗi: $errorMessage", Toast.LENGTH_SHORT).show()
-                                Log.e("AddProductScreen", "Save failed: $errorMessage")
+                            // 2. Upload ảnh mới nếu có
+                            val uploadedImageUrls = mutableListOf<String>()
+                            uploadedImageUrls.addAll(imageUrls)
+
+                            newImageUris.forEach { uri ->
+                                val storageRef = storage.reference.child("product_images/${UUID.randomUUID()}")
+                                storageRef.putFile(uri).await()
+                                val downloadUrl = storageRef.downloadUrl.await().toString()
+                                uploadedImageUrls.add(downloadUrl)
                             }
-                        )
+
+                            // 3. Lấy hoặc tạo document reference
+                            val productDocRef = if (productId != null) {
+                                firestore.collection("products").document(productId)
+                            } else {
+                                firestore.collection("products").document()
+                            }
+
+                            // 4. Lấy dữ liệu sản phẩm hiện tại nếu đang cập nhật
+                            val existingProduct = if (productId != null) {
+                                firestore.collection("products").document(productId).get().await()
+                                    .toObject(ProductModel::class.java)
+                            } else null
+
+                            // 5. Tạo dữ liệu sản phẩm mới
+                            val productData = hashMapOf(
+                                "id" to productDocRef.id,
+                                "brandId" to selectedBrand.value?.id,
+                                "categoryId" to (existingProduct?.categoryId ?: "default"),
+                                "createdAt" to (existingProduct?.createdAt ?: Timestamp.now()),
+                                "description" to description.text,
+                                "discount" to parsedDiscount.toDouble(),
+                                "images" to uploadedImageUrls,
+                                "isFavourite" to (existingProduct?.isFavourite ?: false),
+                                "name" to name.text,
+                                "price" to parsedPrice,
+                                "rating" to parsedRating,
+                                "slug" to name.text.trim().replace(" ", "-").toLowerCase(),
+                                "sold" to (existingProduct?.sold ?: 0)
+                            )
+
+                            // 6. Lưu sản phẩm
+                            productDocRef.set(productData).await()
+
+                            // 7. Cập nhật stock
+                            val stockCollectionRef = productDocRef.collection("stock")
+                            
+                            // Xóa stock cũ
+                            val oldStockSnapshot = stockCollectionRef.get().await()
+                            val deleteBatch = firestore.batch()
+                            oldStockSnapshot.documents.forEach { doc ->
+                                deleteBatch.delete(doc.reference)
+                            }
+                            deleteBatch.commit().await()
+
+                            // Thêm stock mới
+                            val stockBatch = firestore.batch()
+                            stockList.forEach { stock ->
+                                if (stock.size > 0 && stock.color.isNotBlank() && stock.quantity >= 0) {
+                                    val stockDocumentId = "size_${stock.size}_${stock.color.replace(Regex("[.#\\[\\]*~/ ]"), "_")}"
+                                    val stockDocRef = stockCollectionRef.document(stockDocumentId)
+                                    val stockDataMap = mapOf(
+                                        "id" to (stock.id.takeIf { it.isNotBlank() } ?: UUID.randomUUID().toString()),
+                                        "size" to stock.size,
+                                        "color" to stock.color,
+                                        "quantity" to stock.quantity
+                                    )
+                                    stockBatch.set(stockDocRef, stockDataMap)
+                                }
+                            }
+                            stockBatch.commit().await()
+
+                            // Thành công
+                            Toast.makeText(
+                                context,
+                                if (productId == null) "Thêm sản phẩm thành công" else "Cập nhật sản phẩm thành công",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                            navController.popBackStack()
+
+                        } catch (e: Exception) {
+                            Log.e("AddProductScreen", "Error saving product", e)
+                            Toast.makeText(context, e.message ?: "Lỗi khi lưu sản phẩm", Toast.LENGTH_SHORT).show()
+                        } finally {
+                            isLoading = false
+                        }
                     }
                 }
             },
             modifier = Modifier.fillMaxWidth(),
-            enabled = !isLoading // Vô hiệu hóa nút khi đang loading
+            enabled = !isLoading
         ) {
-            // Hiển thị Progress Indicator khi đang loading
             if (isLoading) {
                 CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
             } else {
@@ -459,9 +494,12 @@ suspend fun saveProductAndStock(
 
         // 3. Tạo hoặc cập nhật tài liệu sản phẩm chính trong collection "products"
         val productDocRef = if (productId == null) {
+            Log.d("SaveProduct", "Creating new product document")
             firestore.collection("products").document() // ID tự động nếu thêm mới
 
+
         } else {
+            Log.d("SaveProduct", "Updating existing product document with ID: $productId")
             firestore.collection("products").document(productId) // ID hiện có nếu chỉnh sửa
         }
 
@@ -488,6 +526,12 @@ suspend fun saveProductAndStock(
         if (productData != null) {
             productDocRef.set(productData).await()
         } // Lưu/Cập nhật tài liệu chính
+        else    {
+            Log.e("SaveProduct", "Failed to create product data")
+            onFailure("Lỗi khi tạo dữ liệu sản phẩm")
+            return
+        }
+
 
 
         // 4. Lưu danh sách Stock vào subcollection "stock"

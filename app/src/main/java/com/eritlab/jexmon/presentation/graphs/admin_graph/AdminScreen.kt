@@ -10,7 +10,8 @@ sealed class AdminScreen(val route: String) {
     object EditCategoryScreen : AdminScreen("admin_edit_category_screen/{categoryId}") {
         fun passCategoryId(categoryId: String) = "admin_edit_category_screen/$categoryId"
     }
-
-
-
+    object OrderManagementScreen : AdminScreen("admin_order_management_screen")
+    object OrderDetailScreen : AdminScreen("admin_order_detail_screen/{orderId}") {
+        fun passOrderId(orderId: String) = "admin_order_detail_screen/$orderId"
+    }
 }

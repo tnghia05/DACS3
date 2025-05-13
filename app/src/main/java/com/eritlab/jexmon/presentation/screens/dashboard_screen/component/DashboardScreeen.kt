@@ -1,6 +1,5 @@
 package com.eritlab.jexmon.presentation.screens.dashboard_screen.component
 
-import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -25,20 +24,29 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ConstraintLayout
@@ -46,15 +54,17 @@ import androidx.constraintlayout.compose.Dimension
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.rememberAsyncImagePainter
 import com.eritlab.jexmon.R
+import com.eritlab.jexmon.domain.model.ProductModel
 import com.eritlab.jexmon.presentation.screens.dashboard_screen.DashboardViewModel
 import com.eritlab.jexmon.presentation.ui.theme.PrimaryColor
 import com.eritlab.jexmon.presentation.ui.theme.PrimaryLightColor
 import com.eritlab.jexmon.presentation.ui.theme.TextColor
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
 
 @Composable
-
 fun DashboardScreen(
     popularProductState: LazyListState = rememberLazyListState(),
     suggestionProductState: LazyListState = rememberLazyListState(),
@@ -62,30 +72,147 @@ fun DashboardScreen(
     onItemClick: (String) -> Unit,
     onBannerClick: (String) -> Unit
 ) {
-
-
     val state by productViewModel.state.collectAsState()
+    val bannerListState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
+
+    // Auto-scroll effect for banner
+    LaunchedEffect(key1 = Unit) {
+        while(true) {
+            delay(3000) // Delay 3 seconds between scrolls
+            coroutineScope.launch {
+                // Get the current first visible item
+                val firstVisible = bannerListState.firstVisibleItemIndex
+                // Scroll to next item (or back to start if at end)
+                bannerListState.animateScrollToItem(if (firstVisible < 2) firstVisible + 1 else 0)
+            }
+        }
+    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(start = 15.dp, end = 15.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(90.dp)
-                .background(color = Color(0xFF4a3298), shape = RoundedCornerShape(10.dp))
-                .padding(15.dp),
-            verticalArrangement = Arrangement.Center
+        LazyRow(
+            state = bannerListState,
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            contentPadding = PaddingValues(horizontal = 10.dp)
         ) {
-            Text("A Spring Surpaaarise", color = Color.White)
-            Text(
-                "Cashback 2533%",
-                color = Color.White,
-                fontSize = 25.sp,
-                fontWeight = FontWeight.Bold
-            )
+            items(3) { index ->
+                when (index) {
+                    0 -> {
+                        Box(
+                            modifier = Modifier
+                                .width(320.dp)
+                                .height(120.dp)
+                                .clip(RoundedCornerShape(15.dp))
+                                .background(Color(0x99000000))
+                        ) {
+                            Image(
+                                painter = painterResource(id = R.drawable.banner30_4),
+                                contentDescription = "Banner 30/4",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.FillBounds
+                            )
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color(0x55000000))
+                                    .padding(start = 180.dp, end = 20.dp,  bottom = 15.dp),
+                                verticalArrangement = Arrangement.Center,
+                                horizontalAlignment = Alignment.End
+                            ) {
+                                Text(
+                                    buildAnnotatedString {
+                                        withStyle(style = SpanStyle(
+                                            color = Color.White
+                                        )) {
+                                            append("Chào Mừng 30/4  ")
+                                        }
+                                        withStyle(style = SpanStyle(
+                                            color = Color(0xFFFFD700)
+                                        )) {
+                                            append(" Giảm 50%")
+                                        }
+                                    },
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp,
+                                    style = TextStyle(
+                                        shadow = Shadow(
+                                            color = Color.Black,
+                                            offset = Offset(2f, 2f),
+                                            blurRadius = 3f
+                                        )
+                                    )
+                                )
+                            }
+                        }
+                    }
+                    else -> {
+                        Box(
+                            modifier = Modifier
+                                .width(320.dp)
+                                .height(120.dp)
+                                .clip(RoundedCornerShape(15.dp))
+                        ) {
+                            Image(
+                                painter = painterResource(
+                                    id = when (index) {
+                                        1 -> R.drawable.thieunhi
+                                        else -> R.drawable.thieunhi
+                                    }
+                                ),
+                                contentDescription = when (index) {
+                                    1 -> ""
+                                    else -> "Winter Banner"
+                                },
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.FillBounds
+                            )
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color(0x55000000))
+                                    .padding(start = 180.dp, end = 20.dp, bottom = 15.dp),
+                                verticalArrangement = Arrangement.Center,
+                                horizontalAlignment = Alignment.End
+                            ) {
+                                Text(
+                                    buildAnnotatedString {
+                                        withStyle(style = SpanStyle(
+                                            color = Color.White
+                                        )) {
+                                            append(when (index) {
+                                                1 -> ""
+                                                else -> "Winter Collection "
+                                            })
+                                        }
+                                        withStyle(style = SpanStyle(
+                                            color = Color(0xFFFFD700)
+                                        )) {
+                                            append(when (index) {
+                                                1 -> ""
+                                                else -> "Giảm 50%"
+                                            })
+                                        }
+                                    },
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp,
+                                    style = TextStyle(
+                                        shadow = Shadow(
+                                            color = Color.Black,
+                                            offset = Offset(2f, 2f),
+                                            blurRadius = 3f
+                                        )
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
         Spacer(modifier = Modifier.height(15.dp))
         Row(modifier = Modifier.fillMaxWidth()) {
@@ -366,104 +493,133 @@ fun DashboardScreen(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(text = "Popaulasr Product", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Text(text = "Sản Phẩm Mới Nhất", fontWeight = FontWeight.Bold, fontSize = 16.sp)
             Text(text = "See More", color = MaterialTheme.colors.TextColor)
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
-
-        //popular product
+        // Latest Products Section
         LazyRow(
             state = suggestionProductState,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             contentPadding = PaddingValues(horizontal = 10.dp)
         ) {
-            state.product?.let { productList ->
-                items(productList.size) { index ->
-
-                    val product = productList[index]
-
-                    Log.d("DashboardScreen", "Product ID at index $index: ${product.id}")
-
-
-                    var favouriteRemember by remember { mutableStateOf(product.isFavourite) }
-
-                    Column {
-                        Box(
-                            modifier = Modifier
-                                .size(150.dp)
-                                .background(Color.LightGray, shape = RoundedCornerShape(10.dp))
-                                .clip(RoundedCornerShape(10.dp))
-                                .clickable {
-                                    Log.d("DashboarsdScreen", "Navigating to product: ${product.id}")
-
-                                    product.id?.takeIf { it.isNotBlank() }?.let { id ->
-                                        Log.d("DashboardScreen", "Navigating to product: $id")
-                                        onItemClick(id)
-                                    } ?: Log.e("DashboardScreen", "Product ID is null or empty! Navigation failed.")
-
-                                }
-                            ,
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Image(
-                                painter = rememberAsyncImagePainter(product.images.firstOrNull()),
-                                contentDescription = product.description
-                            )
-                        }
-                        Text(
-                            text = product.name,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.width(151.dp)
-                        )
-
-                        Row(
-                            modifier = Modifier
-                                .width(150.dp)
-                                .fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = " ${formatPrice(product.price)}",
-                                fontWeight = FontWeight(600),
-                                color = MaterialTheme.colors.PrimaryColor
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .size(20.dp)
-                                    .background(
-                                        MaterialTheme.colors.primaryVariant,
-                                        shape = CircleShape
-                                    )
-                                    .clip(CircleShape)
-                                    .clickable {
-                                        favouriteRemember = !favouriteRemember
-                                    },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Image(
-                                    painter = painterResource(
-                                        id = if (favouriteRemember)
-                                            R.drawable.heart_icon_2
-                                        else R.drawable.heart_icon
-                                    ),
-                                    contentDescription = "Favourite Icon",
-                                    modifier = Modifier.padding(3.dp),
-                                    colorFilter = if (favouriteRemember) ColorFilter.tint(
-                                        Color.Red
-                                    ) else null
-                                )
-                            }
-                        }
-                    }
+            state.latestProducts.let { products ->
+                items(products.size) { index ->
+                    ProductItem(product = products[index], onItemClick = onItemClick)
                 }
             }
         }
 
+        Spacer(modifier = Modifier.height(30.dp))
+
+        // Best Selling Products Section
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(text = "Sản Phẩm Bán Chạy", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Text(text = "See More", color = MaterialTheme.colors.TextColor)
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            contentPadding = PaddingValues(horizontal = 10.dp)
+        ) {
+            state.bestSellingProducts.let { products ->
+                items(products.size) { index ->
+                    ProductItem(product = products[index], onItemClick = onItemClick)
+                }
+            }
+        }
     }
 }
+
+@Composable
+fun ProductItem(
+    product: ProductModel,
+    onItemClick: (String) -> Unit
+) {
+    var favouriteRemember by remember { mutableStateOf(product.isFavourite) }
+    
+    Column {
+        Box(
+            modifier = Modifier
+                .size(150.dp)
+                .background(Color.LightGray, shape = RoundedCornerShape(10.dp))
+                .clip(RoundedCornerShape(10.dp))
+                .clickable {
+                    product.id.takeIf { it.isNotBlank() }?.let { id ->
+                        onItemClick(id)
+                    }
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            Image(
+                painter = rememberAsyncImagePainter(product.images.firstOrNull()),
+                contentDescription = product.description
+            )
+            if (product.sold > 5) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(8.dp)
+                        .background(Color(0xFFFF4444), shape = RoundedCornerShape(4.dp))
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        "Hot",
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+        Text(
+            text = product.name,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.width(151.dp)
+        )
+
+        Row(
+            modifier = Modifier.width(150.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = formatPrice(product.price),
+                fontWeight = FontWeight(600),
+                color = MaterialTheme.colors.PrimaryColor
+            )
+            Box(
+                modifier = Modifier
+                    .size(20.dp)
+                    .background(MaterialTheme.colors.primaryVariant, shape = CircleShape)
+                    .clip(CircleShape)
+                    .clickable {
+                        favouriteRemember = !favouriteRemember
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(
+                        id = if (favouriteRemember)
+                            R.drawable.heart_icon_2
+                        else R.drawable.heart_icon
+                    ),
+                    contentDescription = "Favourite Icon",
+                    modifier = Modifier.padding(3.dp),
+                    colorFilter = if (favouriteRemember) ColorFilter.tint(Color.Red) else null
+                )
+            }
+        }
+    }
+}
+
 private fun formatPrice(price: Double): String {
     val format = NumberFormat.getCurrencyInstance(Locale("vi", "VN"))
     return format.format(price)
