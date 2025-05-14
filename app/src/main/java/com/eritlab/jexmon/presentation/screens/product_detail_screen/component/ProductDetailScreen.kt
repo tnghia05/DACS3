@@ -874,9 +874,11 @@ fun ProductDetailContent(
                         .weight(3f)
                         .fillMaxHeight()
                 ) {
+                    val discountedPrice = product.price * (1 - product.discount.toFloat() / 100)
+
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("Mua với voucher", fontSize = 14.sp)
-                        Text("₫363.636", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Text("${String.format("%,d", discountedPrice.toLong())}đ", fontSize = 14.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }

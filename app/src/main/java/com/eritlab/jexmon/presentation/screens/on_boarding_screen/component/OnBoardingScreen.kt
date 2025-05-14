@@ -69,7 +69,7 @@ fun SplashScreen(navController: NavController) {
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text(
-                        text = "Nike",
+                        text = " ",
                         fontSize = 50.sp,
                         color = MaterialTheme.colors.PrimaryColor,
                         fontWeight = FontWeight.Bold,
@@ -80,16 +80,16 @@ fun SplashScreen(navController: NavController) {
                         0 -> {
                             Text(
                                 text = buildAnnotatedString {
-                                    append(text = "Welcome to ")
+                                    append(text = "Chào mừng đến với ")
                                     withStyle(
                                         style = SpanStyle(
                                             fontWeight = FontWeight.Bold,
                                             color = MaterialTheme.colors.TextColor,
                                         )
                                     ) {
-                                        append("Jexmon.")
+                                        append("Shoes Store")
                                     }
-                                    append(" Let's Shop!")
+                                    append("\nThế giới giày của bạn!")
                                 },
                                 color = MaterialTheme.colors.TextColor,
                                 fontSize = 18.sp,
@@ -99,7 +99,7 @@ fun SplashScreen(navController: NavController) {
                         }
                         1 -> {
                             Text(
-                                text = "We help people connect with store\naround Bangladesh",
+                                text = "Khám phá bộ sưu tập giày thời trang\nđa dạng và phong cách",
                                 color = MaterialTheme.colors.TextColor,
                                 fontSize = 18.sp,
                                 textAlign = TextAlign.Center
@@ -107,12 +107,11 @@ fun SplashScreen(navController: NavController) {
                         }
                         else -> {
                             Text(
-                                text = "We show easy way to shop.\nJust stay at home with us",
+                                text = "Mua sắm dễ dàng, giao hàng nhanh chóng\nTrải nghiệm mua sắm tuyệt vời cùng chúng tôi",
                                 color = MaterialTheme.colors.TextColor,
                                 fontSize = 18.sp,
                                 textAlign = TextAlign.Center
                             )
-
                         }
                     }
                     Spacer(modifier = Modifier.height(30.dp))

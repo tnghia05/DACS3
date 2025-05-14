@@ -1,16 +1,35 @@
 package com.eritlab.jexmon.presentation.screens.sign_in_screen.component
 
-
+import android.content.Context
+import android.util.Log
 import android.util.Patterns
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.*
-import androidx.compose.runtime.*
+import androidx.compose.material.Checkbox
+import androidx.compose.material.CheckboxDefaults
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -42,21 +61,35 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 
-
 @Composable
 fun LoginScreen(navController: NavController) {
-    var email by remember { mutableStateOf(TextFieldValue("")) }
-    var password by remember { mutableStateOf(TextFieldValue("")) }
-    var checkBox by remember {
-        mutableStateOf(false)
-    }
-    val emailErrorState = remember {
-        mutableStateOf(false)
-    }
-    val passwordErrorState = remember {
-        mutableStateOf(false)
-    }
+    val context = LocalContext.current
+    val sharedPreferences = context.getSharedPreferences("login_pref", Context.MODE_PRIVATE)
+    
+    // Load saved data
+    val savedEmail = sharedPreferences.getString("saved_email", "") ?: ""
+    val savedPassword = sharedPreferences.getString("saved_password", "") ?: ""
+    val savedRememberMe = sharedPreferences.getBoolean("remember_login", false)
+    
+    var email by remember { mutableStateOf(TextFieldValue(if (savedRememberMe) savedEmail else "")) }
+    var password by remember { mutableStateOf(TextFieldValue(if (savedRememberMe) savedPassword else "")) }
+    var checkBox by remember { mutableStateOf(savedRememberMe) }
+    
+    val emailErrorState = remember { mutableStateOf(false) }
+    val passwordErrorState = remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf("") }
 
+    // Effect to update text fields when component is created
+    LaunchedEffect(Unit) {
+        if (savedRememberMe) {
+            email = TextFieldValue(savedEmail)
+            password = TextFieldValue(savedPassword)
+        } else {
+            email = TextFieldValue("")
+            password = TextFieldValue("")
+
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -77,15 +110,13 @@ fun LoginScreen(navController: NavController) {
                 }
             }
             Box(modifier = Modifier.weight(1.0f)) {
-                Text(text = "Sign in", color = MaterialTheme.colors.TextColor, fontSize = 18.sp)
+                Text(text = "Đăng nhập", color = MaterialTheme.colors.TextColor, fontSize = 18.sp)
             }
-
-
         }
         Spacer(modifier = Modifier.height(50.dp))
-        Text(text = "Welcome Back", fontSize = 26.sp, fontWeight = FontWeight.Bold)
+        Text(text = "Chào mừng trở lại", fontSize = 26.sp, fontWeight = FontWeight.Bold)
         Text(
-            text = "Sign in with your email or password\nor continue with social media.",
+            text = "Đăng nhập bằng email và mật khẩu\nhoặc tiếp tục với mạng xã hội.",
             color = MaterialTheme.colors.TextColor,
             textAlign = TextAlign.Center
         )
@@ -94,6 +125,7 @@ fun LoginScreen(navController: NavController) {
             placeholder = "example@email.com",
             trailingIcon = R.drawable.mail,
             label = "Email",
+            defaultValue = if (savedRememberMe) savedEmail else "",
             errorState = emailErrorState,
             keyboardType = KeyboardType.Email,
             visualTransformation = VisualTransformation.None,
@@ -105,9 +137,10 @@ fun LoginScreen(navController: NavController) {
         CustomTextField(
             placeholder = "********",
             trailingIcon = R.drawable.lock,
-            label = "Password",
-            keyboardType = KeyboardType.Password,
+            label = "Mật khẩu",
+            defaultValue = if (savedRememberMe) savedPassword else "",
             errorState = passwordErrorState,
+            keyboardType = KeyboardType.Password,
             visualTransformation = PasswordVisualTransformation(),
             onChanged = { newPass ->
                 password = newPass
@@ -115,12 +148,15 @@ fun LoginScreen(navController: NavController) {
         )
         Spacer(modifier = Modifier.height(10.dp))
         if (emailErrorState.value) {
-            ErrorSuggestion("Please enter valid email address.")
+            ErrorSuggestion("Vui lòng nhập email hợp lệ")
         }
         if (passwordErrorState.value) {
             Row() {
-                ErrorSuggestion("Please enter valid password.")
+                ErrorSuggestion("Vui lòng nhập mật khẩu hợp lệ")
             }
+        }
+        if (errorMessage.isNotEmpty()) {
+            ErrorSuggestion(errorMessage)
         }
         Row(
             modifier = Modifier
@@ -129,7 +165,6 @@ fun LoginScreen(navController: NavController) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(
                     checked = checkBox, onCheckedChange = {
@@ -137,10 +172,10 @@ fun LoginScreen(navController: NavController) {
                     },
                     colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colors.PrimaryColor)
                 )
-                Text(text = "Remember me", color = MaterialTheme.colors.TextColor, fontSize = 14.sp)
+                Text(text = "Ghi nhớ đăng nhập", color = MaterialTheme.colors.TextColor, fontSize = 14.sp)
             }
             Text(
-                text = "Forget Password",
+                text = "Quên mật khẩu",
                 color = MaterialTheme.colors.TextColor,
                 style = TextStyle(textDecoration = TextDecoration.Underline),
                 modifier = Modifier.clickable {
@@ -148,20 +183,30 @@ fun LoginScreen(navController: NavController) {
                 }
             )
         }
-        CustomDefaultBtn(shapeSize = 50f, btnText = "Continue") {
-            //email pattern
+        CustomDefaultBtn(shapeSize = 50f, btnText = "Tiếp tục") {
             val pattern = Patterns.EMAIL_ADDRESS
             val isEmailValid = pattern.matcher(email.text).matches()
             val isPassValid = password.text.length >= 8
             emailErrorState.value = !isEmailValid
             passwordErrorState.value = !isPassValid
             if (isEmailValid && isPassValid) {
-                // ✅ Đăng nhập với Firebase
                 FirebaseAuth.getInstance().signInWithEmailAndPassword(email.text, password.text)
                     .addOnSuccessListener { authResult ->
+                        val editor = sharedPreferences.edit()
+                        if (checkBox) {
+                            editor.putString("saved_email", email.text)
+                            editor.putString("saved_password", password.text)
+                            editor.putBoolean("remember_login", true)
+                            val success = editor.commit()
+                            Log.d("LoginScreen", "Saved credentials - Email: ${email.text}, Password: ${password.text}, Success: $success")
+                        } else {
+                            editor.clear()
+                            editor.commit()
+                            Log.d("LoginScreen", "Cleared saved credentials")
+                        }
 
                         val user = authResult.user
-                        val uid = user?.uid // ✅ Lấy uid từ user
+                        val uid = user?.uid
                         user?.getIdToken(true)?.addOnSuccessListener { result ->
                             val isAdmin = result.claims["admin"] as? Boolean ?: false
                             if (isAdmin) {
@@ -173,10 +218,19 @@ fun LoginScreen(navController: NavController) {
                             }
                         }
                     }
-                    .addOnFailureListener {
-                        println("❌ Đăng nhập thất bại: ${it.message}")
+                    .addOnFailureListener { exception ->
+                        errorMessage = when {
+                            exception.message?.contains("no user record") == true -> 
+                                "Tài khoản không tồn tại"
+                            exception.message?.contains("password is invalid") == true ->
+                                "Mật khẩu không đúng"
+                            exception.message?.contains("network error") == true ->
+                                "Lỗi kết nối mạng. Vui lòng thử lại"
+                            exception.message?.contains("incorrect, malformed") == true ->
+                                "Email hoặc mật khẩu không chính xác"
+                            else -> "Đăng nhập thất bại: ${exception.message}"
+                        }
                     }
-
             }
         }
         Column(
@@ -240,7 +294,6 @@ fun LoginScreen(navController: NavController) {
                         contentDescription = "Facebook Login Icon"
                     )
                 }
-
             }
             Row(
                 modifier = Modifier
@@ -248,19 +301,18 @@ fun LoginScreen(navController: NavController) {
                     .padding(top = 30.dp),
                 horizontalArrangement = Arrangement.Center
             ) {
-                Text(text = "Don't have an account? ", color = MaterialTheme.colors.TextColor)
+                Text(text = "Chưa có tài khoản? ", color = MaterialTheme.colors.TextColor)
                 Text(
-                    text = "Sign Up",
+                    text = "Đăng ký",
                     color = MaterialTheme.colors.PrimaryColor,
                     modifier = Modifier.clickable {
                         navController.navigate(AuthScreen.SignUpScreen.route)
                     })
             }
         }
-
-
     }
 }
+
 fun sendUidToServer(uid: String) {
     val client = OkHttpClient()
     val json = """{"uid": "$uid"}"""

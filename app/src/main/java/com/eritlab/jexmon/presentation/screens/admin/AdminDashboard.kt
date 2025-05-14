@@ -187,7 +187,7 @@ fun AdminDashboard(navController: NavHostController) {
                     .padding(8.dp)
                     .weight(1f)
             ) {
-                GridButton(label = "Manage Products") {
+                GridButton(label = "Manage Category") {
                     navController.navigate("manageProducts")
                 }
             }
@@ -234,7 +234,7 @@ fun AdminDashboard(navController: NavHostController) {
                     .padding(8.dp)
                     .weight(1f)
             ) {
-                GridButton(label = "Manage Categories") {
+                GridButton(label = "Manage Product") {
                     // Điều hướng chính xác qua admin_graph
                     navController.navigate(Graph.ADMIN) {
                         launchSingleTop = true

@@ -2,16 +2,22 @@ package com.eritlab.jexmon.presentation.screens.admin.order
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Card
+import androidx.compose.material.Chip
+import androidx.compose.material.ChipDefaults
+import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.Text
@@ -37,6 +43,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import java.text.NumberFormat
 import java.util.Locale
 
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun OrderManagementScreen(
     navController: NavController,
@@ -44,6 +51,8 @@ fun OrderManagementScreen(
 ) {
     val firestore = FirebaseFirestore.getInstance()
     val orderList = remember { mutableStateListOf<OrderModel>() }
+    val selectedStatus = remember { mutableStateOf<String?>(null) }
+    val statusList = listOf("Tất cả", "Chờ xác nhận", "Đã xác nhận", "Đang giao", "Đã giao", "Đã hủy")
 
     LaunchedEffect(Unit) {
         firestore.collection("orders").addSnapshotListener { snapshot, _ ->
@@ -75,30 +84,61 @@ fun OrderManagementScreen(
                 color = Color.Black
             )
         }
-    }
 
-    Column(
-        modifier = Modifier
-            .padding(top = 80.dp, start = 12.dp, end = 12.dp)
-            .size(600.dp)
-            .verticalScroll(rememberScrollState())
-    ) {
-        orderList.forEach { order ->
-            OrderItem(
-                order = order,
-                onStatusUpdate = { newStatus ->
-                    updateOrderStatus(order.id, newStatus, firestore)
-                },
-                onPaymentStatusUpdate = { newPaymentStatus ->
-                    updatePaymentStatus(order.id, newPaymentStatus, firestore)
-                },
-                onDelete = {
-                    deleteOrderFromFirestore(order.id, firestore)
-                },
-                onItemClick = {
-                    navController.navigate(AdminScreen.OrderDetailScreen.passOrderId(order.id))
+        // Status filter chips
+        LazyRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(statusList) { status ->
+                Chip(
+                    onClick = {
+                        selectedStatus.value = if (status == "Tất cả") null else status
+                    },
+                    colors = ChipDefaults.chipColors(
+                        backgroundColor = if (selectedStatus.value == status || (status == "Tất cả" && selectedStatus.value == null)) 
+                            Color(0xFF6200EE) else Color.LightGray,
+                        contentColor = if (selectedStatus.value == status || (status == "Tất cả" && selectedStatus.value == null)) 
+                            Color.White else Color.Black
+                    ),
+                    modifier = Modifier.padding(end = 4.dp)
+                ) {
+                    Text(status)
                 }
-            )
+            }
+        }
+
+        Column(
+            modifier = Modifier
+                .padding(top = 8.dp)
+                .size(600.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
+            val filteredOrders = if (selectedStatus.value == null) {
+                orderList
+            } else {
+                orderList.filter { it.status == selectedStatus.value }
+            }
+
+            filteredOrders.forEach { order ->
+                OrderItem(
+                    order = order,
+                    onStatusUpdate = { newStatus ->
+                        updateOrderStatus(order.id, newStatus, firestore)
+                    },
+                    onPaymentStatusUpdate = { newPaymentStatus ->
+                        updatePaymentStatus(order.id, newPaymentStatus, firestore)
+                    },
+                    onDelete = {
+                        deleteOrderFromFirestore(order.id, firestore)
+                    },
+                    onItemClick = {
+                        navController.navigate(AdminScreen.OrderDetailScreen.passOrderId(order.id))
+                    }
+                )
+            }
         }
     }
 }
