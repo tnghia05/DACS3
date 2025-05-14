@@ -7,6 +7,9 @@ sealed class ShopHomeScreen(val route: String) {
     object FavouriteScreen : ShopHomeScreen("favourite_screen")
     object DonMuaScreen : ShopHomeScreen("don_mua_screen")
     object ChatListScreen : ShopHomeScreen("chat_list_screen")
+    object OrderDetailScreen : ShopHomeScreen("order_detail_screen/{orderId}") {
+        fun createRoute(orderId: String) = "order_detail_screen/$orderId"
+    }
     object BrandsHomeScreen : ShopHomeScreen("brands_home_screen/{category}") {
         fun createRoute(category: String) = "brands_home_screen/$category"
     }

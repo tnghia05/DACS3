@@ -48,6 +48,7 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.eritlab.jexmon.domain.model.OrderModel
 import com.eritlab.jexmon.presentation.common.component.DefaultBackArrow
+import com.eritlab.jexmon.presentation.graphs.home_graph.ShopHomeScreen
 import com.eritlab.jexmon.presentation.ui.theme.TextColor
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
@@ -58,8 +59,7 @@ fun DonMua(
     navController: NavController,
     viewModel: OrderViewModel = hiltViewModel(),
     onBackBtnClick: () -> Unit,
-//
-    ) {
+) {
     val orders = viewModel.filteredOrders.value
     val isLoading = viewModel.isLoading.value
     val error = viewModel.error.value
@@ -68,7 +68,6 @@ fun DonMua(
 
     Column(modifier = Modifier.fillMaxSize()) {
         // Top Bar
-
         Row(
             modifier = Modifier
                 .padding(top = 15.dp, start = 15.dp, end = 15.dp)
@@ -79,7 +78,6 @@ fun DonMua(
             Box(modifier = Modifier.weight(0.5f)) {
                 DefaultBackArrow {
                     onBackBtnClick()
-
                 }
             }
             Box(modifier = Modifier.weight(0.7f)) {
@@ -92,11 +90,8 @@ fun DonMua(
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
                     )
-
-
                 }
             }
-
         }
 
         // Status Filter
@@ -105,7 +100,6 @@ fun DonMua(
         Log.d("Tab", "Selected Tab Index: $selectedTabIndex")
 
         ScrollableTabRow(
-
             selectedTabIndex = selectedTabIndex,
             backgroundColor = Color.White,
             contentColor = Color(0xFFFF5722),
@@ -156,15 +150,17 @@ fun DonMua(
             }
             else -> {
                 LazyColumn(
-
                     modifier = Modifier.fillMaxSize()
-                        .height(630.dp)
-                    ,
+                        .height(630.dp),
                     contentPadding = PaddingValues(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(orders) { order ->
-                        OrderItem(order = order, viewModel = viewModel)
+                        OrderItem(
+                            order = order,
+                            viewModel = viewModel,
+                            navController = navController
+                        )
                     }
                 }
             }
@@ -193,7 +189,8 @@ fun FilterChip(
 @Composable
 fun OrderItem(
     order: OrderModel,
-    viewModel: OrderViewModel = hiltViewModel()
+    viewModel: OrderViewModel = hiltViewModel(),
+    navController: NavController
 ) {
     val scope = rememberCoroutineScope()
     val scaffoldState = rememberScaffoldState()
@@ -201,7 +198,10 @@ fun OrderItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(4.dp),
+            .padding(4.dp)
+            .clickable {
+                navController.navigate(ShopHomeScreen.OrderDetailScreen.createRoute(order.id))
+            },
         elevation = 4.dp
     ) {
         Column(modifier = Modifier.padding(16.dp)) {

@@ -16,6 +16,7 @@ import com.eritlab.jexmon.presentation.screens.conversation_screen.component.Cha
 import com.eritlab.jexmon.presentation.screens.conversation_screen.component.ConversationScreen
 import com.eritlab.jexmon.presentation.screens.dashboard_screen.component.DashboardScreen
 import com.eritlab.jexmon.presentation.screens.don_da_mua.DonMua
+import com.eritlab.jexmon.presentation.screens.don_da_mua.OrderDetailScreen
 import com.eritlab.jexmon.presentation.screens.favourite_screen.component.FavouriteScreen
 import com.eritlab.jexmon.presentation.screens.products.ProductsHome
 import com.eritlab.jexmon.presentation.screens.profile_screen.component.EditProfileScreen
@@ -76,6 +77,17 @@ fun HomeNavGraph(navHostController: NavHostController) {
                 )
         }
 
+        composable(
+            route = ShopHomeScreen.OrderDetailScreen.route,
+            arguments = listOf(navArgument("orderId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val orderId = backStackEntry.arguments?.getString("orderId") ?: ""
+            OrderDetailScreen(
+                navController = navHostController,
+                orderId = orderId,
+                onBackClick = { navHostController.popBackStack() }
+            )
+        }
 
         composable(ShopHomeScreen.ConversationScreen.route) {
             ConversationScreen(
