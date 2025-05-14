@@ -1,20 +1,41 @@
 package com.eritlab.jexmon.presentation.screens.sign_up_screen.component
 
+import android.app.DatePickerDialog
 import android.util.Patterns
 import android.widget.Toast
-import androidx.compose.animation.*
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.with
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.DropdownMenuItem
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.ExposedDropdownMenuBox
+import androidx.compose.material.ExposedDropdownMenuDefaults
 import androidx.compose.material.MaterialTheme
+import androidx.compose.material.OutlinedButton
+import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -30,45 +51,78 @@ import com.eritlab.jexmon.presentation.common.CustomDefaultBtn
 import com.eritlab.jexmon.presentation.common.CustomTextField
 import com.eritlab.jexmon.presentation.common.component.DefaultBackArrow
 import com.eritlab.jexmon.presentation.common.component.ErrorSuggestion
-import com.eritlab.jexmon.presentation.graphs.Graph
 import com.eritlab.jexmon.presentation.graphs.auth_graph.AuthScreen
-import com.eritlab.jexmon.presentation.ui.theme.PrimaryColor
-import com.eritlab.jexmon.presentation.ui.theme.PrimaryLightColor
 import com.eritlab.jexmon.presentation.ui.theme.TextColor
 import com.eritlab.jexmon.presentation.viewmodel.SignUpState
 import com.eritlab.jexmon.presentation.viewmodel.SignUpViewModel
+import java.util.Calendar
 
-
-@OptIn(ExperimentalAnimationApi::class)
+@OptIn(ExperimentalAnimationApi::class, ExperimentalMaterialApi::class)
 @Composable
 fun SignUpScreen(navController: NavController) {
     var email by remember { mutableStateOf(TextFieldValue("")) }
     var password by remember { mutableStateOf(TextFieldValue("")) }
     var confirmPass by remember { mutableStateOf(TextFieldValue("")) }
-    var firstName by remember { mutableStateOf(TextFieldValue("")) }
-    var lastName by remember { mutableStateOf(TextFieldValue("")) }
+    var name by remember { mutableStateOf(TextFieldValue("")) }
     var phoneNumber by remember { mutableStateOf(TextFieldValue("")) }
-    var address by remember { mutableStateOf(TextFieldValue("")) }
+    var selectedDate by remember { mutableStateOf("") }
+    var selectedGender by remember { mutableStateOf("") }
+    
     val emailErrorState = remember { mutableStateOf(false) }
     val passwordErrorState = remember { mutableStateOf(false) }
     val conPasswordErrorState = remember { mutableStateOf(false) }
-    val firstNameErrorState = remember { mutableStateOf(false) }
-    val lastNameErrorState = remember { mutableStateOf(false) }
+    val nameErrorState = remember { mutableStateOf(false) }
     val phoneNumberErrorState = remember { mutableStateOf(false) }
-    val addressErrorState = remember { mutableStateOf(false) }
+    val birthdayErrorState = remember { mutableStateOf(false) }
+    val genderErrorState = remember { mutableStateOf(false) }
+    
     val animate = remember { mutableStateOf(true) }
+    val context = LocalContext.current
 
     val viewModel: SignUpViewModel = viewModel()
     val signUpState by viewModel.signUpState.collectAsState()
+
+    val calendar = Calendar.getInstance()
+    val year = calendar.get(Calendar.YEAR)
+    val month = calendar.get(Calendar.MONTH)
+    val day = calendar.get(Calendar.DAY_OF_MONTH)
+
+    val datePickerDialog = DatePickerDialog(
+        context,
+        { _, selectedYear, selectedMonth, selectedDay ->
+            selectedDate = "$selectedDay/${selectedMonth + 1}/$selectedYear"
+        },
+        year, month, day
+    )
+
+    LaunchedEffect(signUpState) {
+        when (signUpState) {
+            is SignUpState.OTPSent -> {
+                navController.navigate(AuthScreen.EmailVerificationScreen.route) {
+                    popUpTo(AuthScreen.SignUpScreen.route) { inclusive = true }
+                }
+            }
+            is SignUpState.Success -> {
+                navController.navigate(AuthScreen.SignInSuccess.route) {
+                    popUpTo(AuthScreen.SignUpScreen.route) { inclusive = true }
+                }
+            }
+            is SignUpState.Error -> {
+                Toast.makeText(
+                    context,
+                    (signUpState as SignUpState.Error).message,
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+            else -> {}
+        }
+    }
+
     AnimatedContent(targetState = animate.value, transitionSpec = {
         slideInHorizontally(
-            initialOffsetX = { value ->
-                value
-            }
+            initialOffsetX = { value -> value }
         ) with slideOutHorizontally(
-            targetOffsetX = { value ->
-                -value
-            }
+            targetOffsetX = { value -> -value }
         )
     }) {
         if (it) {
@@ -78,36 +132,36 @@ fun SignUpScreen(navController: NavController) {
                     .padding(30.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                // Header
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
-                )
-                {
+                ) {
                     Box(modifier = Modifier.weight(0.7f)) {
                         DefaultBackArrow {
-                             navController.popBackStack()
+                            navController.popBackStack()
                         }
                     }
                     Box(modifier = Modifier.weight(1.0f)) {
                         Text(
-                            text = "Sign Up",
+                            text = "Đăng Ký",
                             color = MaterialTheme.colors.TextColor,
                             fontSize = 18.sp
                         )
                     }
-
-
                 }
+
                 Spacer(modifier = Modifier.height(50.dp))
-                Text(text = "Register Account", fontSize = 26.sp, fontWeight = FontWeight.Bold)
+                Text(text = "Đăng Ký Tài Khoản", fontSize = 26.sp, fontWeight = FontWeight.Bold)
                 Text(
-                    text = "Complete your details or continue\nwith social media.",
+                    text = "Hoàn thành thông tin của bạn",
                     color = MaterialTheme.colors.TextColor,
                     textAlign = TextAlign.Center
                 )
                 Spacer(modifier = Modifier.height(50.dp))
+
+                // Email field
                 CustomTextField(
                     placeholder = "example@email.com",
                     trailingIcon = R.drawable.mail,
@@ -115,52 +169,48 @@ fun SignUpScreen(navController: NavController) {
                     errorState = emailErrorState,
                     keyboardType = KeyboardType.Email,
                     visualTransformation = VisualTransformation.None,
-                    onChanged = { newEmail ->
-                        email = newEmail
-                    }
+                    onChanged = { newEmail -> email = newEmail }
                 )
 
                 Spacer(modifier = Modifier.height(20.dp))
+
+                // Password field
                 CustomTextField(
                     placeholder = "********",
                     trailingIcon = R.drawable.lock,
-                    label = "Password",
+                    label = "Mật khẩu",
                     keyboardType = KeyboardType.Password,
                     errorState = passwordErrorState,
                     visualTransformation = PasswordVisualTransformation(),
-                    onChanged = { newPass ->
-                        password = newPass
-                    }
+                    onChanged = { newPass -> password = newPass }
                 )
 
-
                 Spacer(modifier = Modifier.height(20.dp))
+
+                // Confirm Password field
                 CustomTextField(
                     placeholder = "********",
                     trailingIcon = R.drawable.lock,
-                    label = "Confirm Password",
+                    label = "Xác nhận mật khẩu",
                     keyboardType = KeyboardType.Password,
                     errorState = conPasswordErrorState,
                     visualTransformation = PasswordVisualTransformation(),
-                    onChanged = { newPass ->
-                        confirmPass = newPass
-                    }
+                    onChanged = { newPass -> confirmPass = newPass }
                 )
 
+                // Error messages
                 Spacer(modifier = Modifier.height(10.dp))
                 if (emailErrorState.value) {
-                    ErrorSuggestion("Please enter valid email address.")
+                    ErrorSuggestion("Vui lòng nhập email hợp lệ")
                 }
                 if (passwordErrorState.value) {
-                    Row() {
-                        ErrorSuggestion("Please enter valid password.")
-                    }
+                    ErrorSuggestion("Mật khẩu phải có ít nhất 8 ký tự")
                 }
                 if (conPasswordErrorState.value) {
-                    ErrorSuggestion("Confirm Password miss matched.")
+                    ErrorSuggestion("Mật khẩu xác nhận không khớp")
                 }
-                CustomDefaultBtn(shapeSize = 50f, btnText = "Continue") {
-                    //email pattern
+
+                CustomDefaultBtn(shapeSize = 50f, btnText = "Tiếp tục") {
                     val pattern = Patterns.EMAIL_ADDRESS
                     val isEmailValid = pattern.matcher(email.text).matches()
                     val isPassValid = password.text.length >= 8
@@ -172,101 +222,6 @@ fun SignUpScreen(navController: NavController) {
                         animate.value = !animate.value
                     }
                 }
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(bottom = 50.dp),
-                    verticalArrangement = Arrangement.Bottom
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(
-                            space = 10.dp,
-                            alignment = Alignment.CenterHorizontally
-                        )
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(50.dp)
-                                .background(
-                                    MaterialTheme.colors.PrimaryLightColor,
-                                    shape = CircleShape
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Image(
-                                painter = painterResource(id = R.drawable.google_icon),
-                                contentDescription = "Google Login Icon"
-                            )
-                        }
-                        Box(
-                            modifier = Modifier
-                                .size(50.dp)
-                                .background(
-                                    MaterialTheme.colors.PrimaryLightColor,
-                                    shape = CircleShape
-                                )
-                                .clickable {
-
-                                },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Image(
-                                painter = painterResource(id = R.drawable.twitter),
-                                contentDescription = "Twitter Login Icon"
-                            )
-                        }
-                        Box(
-                            modifier = Modifier
-                                .size(50.dp)
-                                .background(
-                                    MaterialTheme.colors.PrimaryLightColor,
-                                    shape = CircleShape
-                                )
-                                .clickable {
-
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Image(
-                                painter = painterResource(id = R.drawable.facebook_2),
-                                contentDescription = "Facebook Login Icon"
-                            )
-                        }
-
-                    }
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 30.dp)
-                            .clickable {
-
-                            },
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = "By continuing you confirm that you agree",
-                            color = MaterialTheme.colors.TextColor
-                        )
-                        Row()
-                        {
-                            Text(
-                                text = "with our ",
-                                color = MaterialTheme.colors.TextColor,
-                            )
-                            Text(
-                                text = "Terms & Condition",
-                                color = MaterialTheme.colors.PrimaryColor,
-                                modifier = Modifier.clickable {
-
-                                })
-                        }
-
-                    }
-                }
-
-
             }
         } else {
             Column(
@@ -276,12 +231,10 @@ fun SignUpScreen(navController: NavController) {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
-                )
-                {
+                ) {
                     Box(modifier = Modifier.weight(0.7f)) {
                         DefaultBackArrow {
                             animate.value = !animate.value
@@ -289,159 +242,150 @@ fun SignUpScreen(navController: NavController) {
                     }
                     Box(modifier = Modifier.weight(1.0f)) {
                         Text(
-                            text = "Sign Up",
+                            text = "Thông tin cá nhân",
                             color = MaterialTheme.colors.TextColor,
                             fontSize = 18.sp
                         )
                     }
-
-
                 }
+
                 Spacer(modifier = Modifier.height(50.dp))
-                Text(text = "Complete Profile", fontSize = 26.sp, fontWeight = FontWeight.Bold)
+                Text(text = "Thông tin cá nhân", fontSize = 26.sp, fontWeight = FontWeight.Bold)
                 Text(
-                    text = "Complete your details or continue\nwith social media.",
+                    text = "Điền thông tin của bạn",
                     color = MaterialTheme.colors.TextColor,
                     textAlign = TextAlign.Center
                 )
                 Spacer(modifier = Modifier.height(50.dp))
+
+                // Name field
                 CustomTextField(
-                    placeholder = "Enter your first name",
+                    placeholder = "Nhập họ tên của bạn",
                     trailingIcon = R.drawable.user,
-                    label = "First Name",
-                    errorState = firstNameErrorState,
+                    label = "Họ và tên",
+                    errorState = nameErrorState,
                     keyboardType = KeyboardType.Text,
                     visualTransformation = VisualTransformation.None,
-                    onChanged = { newText ->
-                        firstName = newText
-                    }
-                )
-                Spacer(modifier = Modifier.height(20.dp))
-                CustomTextField(
-                    placeholder = "Enter your last name",
-                    trailingIcon = R.drawable.user,
-                    label = "Last Name",
-                    errorState = lastNameErrorState,
-                    keyboardType = KeyboardType.Text,
-                    visualTransformation = VisualTransformation.None,
-                    onChanged = { newText ->
-                        lastName = newText
-                    }
+                    onChanged = { newText -> name = newText }
                 )
 
                 Spacer(modifier = Modifier.height(20.dp))
+
+                // Birthday field
+                OutlinedButton(
+                    onClick = { datePickerDialog.show() },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = if (selectedDate.isEmpty()) "Chọn ngày sinh" else selectedDate,
+                        color = if (selectedDate.isEmpty()) MaterialTheme.colors.TextColor.copy(alpha = 0.5f) 
+                               else MaterialTheme.colors.TextColor
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Gender selection
+                var expanded by remember { mutableStateOf(false) }
+                val genders = listOf("Nam", "Nữ")
+
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = !expanded },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedTextField(
+                        value = selectedGender,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Giới tính") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        genders.forEach { gender ->
+                            DropdownMenuItem(
+                                onClick = {
+                                    selectedGender = gender
+                                    expanded = false
+                                }
+                            ) {
+                                Text(text = gender)
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Phone number field
                 CustomTextField(
-                    placeholder = "Enter your phone number",
+                    placeholder = "Nhập số điện thoại",
                     trailingIcon = R.drawable.phone,
-                    label = "Phone Number",
+                    label = "Số điện thoại",
                     keyboardType = KeyboardType.Phone,
                     errorState = phoneNumberErrorState,
                     visualTransformation = VisualTransformation.None,
-                    onChanged = { newNumber ->
-                        phoneNumber = newNumber
-                    }
+                    onChanged = { newNumber -> phoneNumber = newNumber }
                 )
 
-
-                Spacer(modifier = Modifier.height(20.dp))
-                CustomTextField(
-                    placeholder = "example: Dhaka, Bangladesh",
-                    trailingIcon = R.drawable.location_point,
-                    label = "Address",
-                    keyboardType = KeyboardType.Password,
-                    errorState = addressErrorState,
-                    visualTransformation = VisualTransformation.None,
-                    onChanged = { newText ->
-                        address = newText
-                    }
-                )
                 Spacer(modifier = Modifier.height(10.dp))
-                if (firstNameErrorState.value || lastNameErrorState.value) {
-                    ErrorSuggestion("Please enter valid name.")
+
+                // Error messages
+                if (nameErrorState.value) {
+                    ErrorSuggestion("Vui lòng nhập họ tên")
+                }
+                if (birthdayErrorState.value) {
+                    ErrorSuggestion("Vui lòng chọn ngày sinh")
+                }
+                if (genderErrorState.value) {
+                    ErrorSuggestion("Vui lòng chọn giới tính")
                 }
                 if (phoneNumberErrorState.value) {
-                    ErrorSuggestion("Please enter valid phone number.")
-                }
-                if (addressErrorState.value) {
-                    ErrorSuggestion("Please enter valid address.")
+                    ErrorSuggestion("Vui lòng nhập số điện thoại hợp lệ")
                 }
 
-                CustomDefaultBtn(shapeSize = 50f, btnText = "Continue") {
-                    val isPhoneValid = phoneNumber.text.isEmpty() || phoneNumber.text.length < 4
-                    val isFNameValid = firstName.text.isEmpty() || firstName.text.length < 3
-                    val isLNameValid = lastName.text.isEmpty() || lastName.text.length < 3
-                    val isAddressValid = address.text.isEmpty() || address.text.length < 5
-                    firstNameErrorState.value = !isFNameValid
-                    lastNameErrorState.value = !isLNameValid
-                    addressErrorState.value = !isAddressValid
+                Spacer(modifier = Modifier.height(20.dp))
+
+                CustomDefaultBtn(shapeSize = 50f, btnText = "Đăng ký") {
+                    val isNameValid = name.text.isNotEmpty() && name.text.length >= 3
+                    val isPhoneValid = phoneNumber.text.isNotEmpty() && phoneNumber.text.length >= 10
+                    val isBirthdayValid = selectedDate.isNotEmpty()
+                    val isGenderValid = selectedGender.isNotEmpty()
+
+                    nameErrorState.value = !isNameValid
                     phoneNumberErrorState.value = !isPhoneValid
-                    if (!isFNameValid && !isLNameValid && !isAddressValid && !isPhoneValid) {
-                        navController.navigate(AuthScreen.OTPScreen.route)
-                    }
-                    if (!isPhoneValid && !isFNameValid && !isLNameValid && !isAddressValid) {
+                    birthdayErrorState.value = !isBirthdayValid
+                    genderErrorState.value = !isGenderValid
+
+                    if (isNameValid && isPhoneValid && isBirthdayValid && isGenderValid) {
                         viewModel.signUp(
                             email = email.text,
                             password = password.text,
-                            firstName = firstName.text,
-                            lastName = lastName.text,
+                            name = name.text,
                             phoneNumber = phoneNumber.text,
-                            address = address.text
+                            birthday = selectedDate,
+                            gender = selectedGender
                         )
                     }
                 }
 
-                val context = LocalContext.current  // Lấy context đúng cách
 
-                LaunchedEffect(signUpState) {
-                    when (signUpState) {
-                        is SignUpState.Success -> {
-                            navController.navigate(AuthScreen.SignInSuccess.route)
-                        }
-                        is SignUpState.Error -> {
-                            Toast.makeText(context, (signUpState as SignUpState.Error).message, Toast.LENGTH_LONG).show()
-                        }
-                        else -> {}
+                // Thêm nút kiểm tra xác minh email
+                if (signUpState is SignUpState.OTPSent) {
+                    Spacer(modifier = Modifier.height(20.dp))
+                    CustomDefaultBtn(
+                        shapeSize = 50f,
+                        btnText = "Đã xác minh email"
+                    ) {
+                        viewModel.checkEmailVerification()
                     }
                 }
             }
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(bottom = 50.dp),
-                verticalArrangement = Arrangement.Bottom
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 30.dp)
-                        .clickable {
-
-                        },
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "By continuing you confirm that you agree",
-                        color = MaterialTheme.colors.TextColor
-                    )
-                    Row()
-                    {
-                        Text(
-                            text = "with our ",
-                            color = MaterialTheme.colors.TextColor,
-                        )
-                        Text(
-                            text = "Terms & Condition",
-                            color = MaterialTheme.colors.PrimaryColor,
-                            modifier = Modifier.clickable {
-
-                            })
-                    }
-
-                }
-            }
-
-
         }
     }
 }

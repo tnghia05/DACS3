@@ -30,7 +30,7 @@ fun RootNavigationGraph(navHostController: NavHostController, context: Context,
     NavHost(
         navController = navHostController,
         route = Graph.ROOT,
-        startDestination = Graph.HOME
+        startDestination = Graph.AUTHENTICATION
     ) {
         authNavGraph(navHostController, context)
 

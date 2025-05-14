@@ -65,6 +65,9 @@ fun NavGraphBuilder.authNavGraph(navController: NavHostController, context: Cont
         composable(AuthScreen.SignInSuccess.route) {
             SignInScreen(navController = navController)
         }
+        composable(AuthScreen.EmailVerificationScreen.route) {
+            EmailVerificationScreen(navController = navController)
+        }
 
     }
 }

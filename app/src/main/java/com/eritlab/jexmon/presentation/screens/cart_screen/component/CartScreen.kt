@@ -1,4 +1,4 @@
-package com.eritlab.jexmon.presentation.screens.cart_screen.component
+ package com.eritlab.jexmon.presentation.screens.cart_screen.component
 
 import android.util.Log
 import android.widget.Toast
@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -42,6 +43,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -56,7 +58,7 @@ import com.eritlab.jexmon.presentation.ui.theme.TextColor
 import java.text.NumberFormat
 import java.util.Locale
 
-@Composable
+ @Composable
 fun CartScreen(
     viewModel: CartViewModel = hiltViewModel(),
     onBackClick: () -> Unit,
@@ -173,17 +175,26 @@ fun CartScreen(
                         painter = rememberAsyncImagePainter(cartItem.imageUrl),
                         contentDescription = null,
                         modifier = Modifier
-                            .size(70.dp)
+                            .size(80.dp)
                             .background(Color(0x8DB3B0B0), shape = RoundedCornerShape(10.dp))
                             .padding(10.dp)
                             .clip(RoundedCornerShape(10.dp))
                     )
-                    Column {
+                    Column(
+                        modifier = Modifier
+                            .width(153.dp)
+                    ) {
                         Text(
                             text = cartItem.name,
                             fontWeight = FontWeight(700),
                             fontSize = 16.sp,
+                            maxLines = 2,
+                            modifier = Modifier.widthIn(max = 200.dp)
+,
+                                    overflow = TextOverflow.Ellipsis // sẽ hiện "..." nếu vượt quá 2 dòng
+
                         )
+
                         Spacer(modifier = Modifier.height(7.dp))
                         val colorName = convertToColorName(cartItem.color)
                         Row {
@@ -199,7 +210,7 @@ fun CartScreen(
                         }
                         Spacer(modifier = Modifier.height(7.dp))
                         Row {
-                            val discountedPrice = cartItem.price * (1 - cartItem.discount.toFloat() / 100)
+                            val discountedPrice = cartItem.price
                             Text(
                                 text = formatPrice(discountedPrice),
                                 color = MaterialTheme.colors.PrimaryColor,
@@ -211,12 +222,11 @@ fun CartScreen(
                             )
                         }
                     }
-                    
+
                     // Nút điều chỉnh số lượng
                     Row(
-                        modifier = Modifier.padding(start = 0.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(-6.dp) // giảm khoảng cách giữa các phần tử
+                        horizontalArrangement = Arrangement.spacedBy(-10.dp) // giảm khoảng cách giữa các phần tử
                     ) {
                         IconButton(
                             onClick = { viewModel.updateQuantity(cartItem.id!!, cartItem.quantity - 1) }
@@ -350,7 +360,7 @@ fun CartScreen(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column() {
-                    Text(text = "Total")
+                    Text(text = "Tổng")
                     val discountAmountValue by viewModel.discountAmount
                     val appliedVoucherValue by viewModel.appliedVoucher
                     

@@ -1,5 +1,7 @@
 package com.eritlab.jexmon.presentation.screens.profile_screen.component
 
+import android.app.Activity
+import android.content.Intent
 import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -30,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -51,10 +54,11 @@ import kotlinx.coroutines.tasks.await
 fun ProfileScreen(
     navController: NavHostController,
     onBackBtnClick: () -> Unit,
-
 ) {
     Log.d("Navigation", "ProfileScreen NavController Hash: ${navController.hashCode()}")
 
+    // Get the current Activity context
+    val context = LocalContext.current
     val currentUser = FirebaseAuth.getInstance().currentUser
     val isAdmin = remember { mutableStateOf(false) }
     val uid = currentUser?.uid ?: ""
@@ -63,10 +67,13 @@ fun ProfileScreen(
 
     // ✅ Kiểm tra quyền admin khi màn hình được khởi tạo
     LaunchedEffect(Unit) {
-        currentUser?.getIdToken(true)?.addOnSuccessListener { result ->
-            isAdmin.value = result.claims["admin"] as? Boolean ?: false
+        if (uid.isNotEmpty()) {
+            val doc = db.collection("user").document(uid).get().await()
+            isAdmin.value = doc.getString("role") == "admin"
+            Log.d("UserRole", "User ID: ${isAdmin.value}")
+            Log.d("UserRole", "User role: ${doc.getString("role")}")
         }
-        Log.d("ProfileScreen", "isAdmin: ${isAdmin.value}")
+
     }
 
     LaunchedEffect(uid) {
@@ -138,19 +145,26 @@ fun ProfileScreen(
             Log.d("Navigation", "🟢 Current Destination: ${navController.currentDestination?.route}")
         }
 
-        ProfileOption(
-            icon = R.drawable.user_icon, // Icon cho Admin Panel
-            label = "Admin Panel",
-            onClick = {
-                Log.d("Navigation", "🟢 Clicked on Admin Panel")
-                Log.d("Navigation", "Navigating to: ${AdminScreen.Dashboard.route}")
 
-                navController.navigate(AdminScreen.Dashboard.route) {
-                    launchSingleTop = true
-                    restoreState = true
+        if (isAdmin.value) {
+            Log.d("Navigation", "🟢 User is Admin")
+            ProfileOption(
+                icon = R.drawable.user_icon, // Icon cho Admin Panel
+                label = "Admin Panel",
+                onClick = {
+                    Log.d("Navigation", "🟢 Clicked on Admin Panel")
+                    Log.d("Navigation", "Navigating to: ${AdminScreen.Dashboard.route}")
+
+                    navController.navigate(AdminScreen.Dashboard.route) {
+                        launchSingleTop = true
+                        restoreState = true
+                    }
                 }
-            }
-        )
+            )
+        } else {
+            Log.d("Navigation", "🟢 User is not Admin")
+        }
+
 
 
         Spacer(modifier = Modifier.height(15.dp))
@@ -174,7 +188,14 @@ fun ProfileScreen(
         Spacer(modifier = Modifier.height(15.dp))
         ProfileOption(icon = R.drawable.question_mark, label = "ChatBot") { }
         Spacer(modifier = Modifier.height(15.dp))
-        ProfileOption(icon = R.drawable.log_out, label = "Logout") { }
+        ProfileOption(icon = R.drawable.log_out, label = "Logout") {
+            FirebaseAuth.getInstance().signOut()
+            // Restart the activity
+            val intent = Intent(context, context.javaClass)
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            context.startActivity(intent)
+            (context as? Activity)?.finish()
+        }
     }
 }
 

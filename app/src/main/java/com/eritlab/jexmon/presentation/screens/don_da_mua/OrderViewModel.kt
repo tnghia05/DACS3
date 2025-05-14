@@ -58,4 +58,34 @@ class OrderViewModel @Inject constructor() : ViewModel() {
             _filteredOrders.value = _orders.value.filter { it.status == status }
         }
     }
+
+    fun cancelOrder(orderId: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        val userId = auth.currentUser?.uid ?: return
+
+        db.collection("orders")
+            .document(orderId)
+            .update("status", "Đã hủy")
+            .addOnSuccessListener {
+                loadOrders() // Reload orders after cancellation
+                onSuccess()
+            }
+            .addOnFailureListener { exception ->
+                onError(exception.message ?: "Không thể hủy đơn hàng")
+            }
+    }
+
+    fun markOrderAsReceived(orderId: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        val userId = auth.currentUser?.uid ?: return
+
+        db.collection("orders")
+            .document(orderId)
+            .update("status", "Đã giao")
+            .addOnSuccessListener {
+                loadOrders() // Reload orders after updating
+                onSuccess()
+            }
+            .addOnFailureListener { exception ->
+                onError(exception.message ?: "Không thể cập nhật trạng thái đơn hàng")
+            }
+    }
 }

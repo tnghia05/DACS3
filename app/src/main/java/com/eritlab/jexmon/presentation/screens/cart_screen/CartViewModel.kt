@@ -11,7 +11,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 
 @HiltViewModel
-class CartViewModel @Inject constructor() : ViewModel() {
+open class CartViewModel @Inject constructor() : ViewModel() {
     private val _cartItems = mutableStateOf<List<CartItem>>(emptyList())
     val cartItems: State<List<CartItem>> = _cartItems
 
@@ -51,7 +51,7 @@ class CartViewModel @Inject constructor() : ViewModel() {
 
     private fun calculateTotal() {
 
-        val total1 = _cartItems.value.sumOf { (1 - it.discount.toFloat() / 100)*it.price *it.quantity }
+        val total1 = _cartItems.value.sumOf { it.price *it.quantity }
 
         Log.d("CartViewModel", "Total1: $total1")
 //        val subtotal = _cartItems.value.sumOf { total1 * it.quantity }

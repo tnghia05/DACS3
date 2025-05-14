@@ -89,7 +89,7 @@ fun CategoryScreen(navController: NavController) {
     ) {
         categoryList.forEach { category ->
             CategoryItem(category = category, onEditClick = {
-                navController.navigate("admin_edit_category_screen/${category.id}")
+                navController.navigate(AdminScreen.EditCategoryScreen.passCategoryId(category.id))
             }, onDeleteClick = {
                 deleteCategoryFromFirestore(category.id, firestore)
             })

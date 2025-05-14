@@ -79,6 +79,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import kotlin.math.floor
 
 @Composable
 fun ProductDetailScreen(
@@ -1176,7 +1177,8 @@ fun BottomSheetContent(
                     userId = currentUser!!.uid,
                     productId = product.id,
                     name = product.name,
-                    price = product.price,
+                     price = floor(product.price * (1 - product.discount.toFloat() / 100)),
+                    priceBeforeDiscount = product.price,
                     size = selectedSize,
                     color = selectedColor ?: "",
                     quantity = quantity,

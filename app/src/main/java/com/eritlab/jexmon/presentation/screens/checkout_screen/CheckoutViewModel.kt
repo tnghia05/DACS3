@@ -26,6 +26,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import vn.zalopay.sdk.ZaloPayError
+import java.text.NumberFormat
+import java.util.Locale
 import javax.inject.Inject
 
 @HiltViewModel
@@ -143,8 +145,7 @@ class CheckoutViewModel @Inject constructor(
     }  fun calculateProductDiscountTotalnodis(): Double {
         fetchSelectedVoucher()
         val discountedTotal = _cartItems.value.sumOf { item ->
-            val discountRate = item.discount / 100.0
-            val discountedPrice = item.price * (1 - discountRate)
+            val discountedPrice = item.price
             discountedPrice * item.quantity
         }
         // Ghi log tổng giá sau khi đã áp dụng giảm giá
@@ -154,14 +155,19 @@ class CheckoutViewModel @Inject constructor(
         return discountedTotal
     }
 
+
     private fun calculateTotal() {
         val subtotal = _cartItems.value.sumOf { it.price * it.quantity }
         _subtotal.value = subtotal
-        Log.d("CheckoutViewModel", "Subtotal: $subtotal")
+        Log.d("CheckoutViewModel", "Subtotal: ${formatPrice(subtotal)}")
         _total.value = subtotal  - (_discount.value * subtotal / 100)
-        Log.d("CheckoutViewModel", "Total: ${_total.value}")
+        Log.d("CheckoutViewModel", "Total: ${formatPrice(_total.value)}")
     }
-
+    // Đảm bảo hàm formatPrice không thay đổi
+    private fun formatPrice(price: Double): String {
+        val format = NumberFormat.getCurrencyInstance(Locale("vi", "VN"))
+        return format.format(price)
+    }
 
     fun fetchDefaultShippingAddress() {
         val userId = auth.currentUser?.uid ?: return
@@ -272,6 +278,8 @@ class CheckoutViewModel @Inject constructor(
                     )
                 }
                 _selectedVoucher.value = selectedVoucher // <-- Chỉ lưu 1 voucher đang chọn
+
+                _discount.value = selectedVoucher?.discount ?: 0.0
                 if (_selectedVoucher.value != null) {
                     Log.d("CheckoutViewModel", "Selected Voucher1: ${_selectedVoucher.value!!.discount}")
                 } else {
@@ -305,6 +313,7 @@ class CheckoutViewModel @Inject constructor(
                         imageUrl = doc.getString("imageUrl") ?: "",
                         productId = doc.getString("productId") ?: "",
                         discount = (doc.getDouble("discount") ?: 0.0),
+                        priceBeforeDiscount = (doc.getDouble("priceBeforeDiscount") ?: 0.0),
                         size = (doc.getLong("size")?.toInt() ?: 0),
                         color = convertToColorName(
                             doc.getString("color") ?: "#FFFFFF"
@@ -484,7 +493,7 @@ class CheckoutViewModel @Inject constructor(
                 // *** BƯỚC QUAN TRỌNG: GỌI BACKEND ĐỂ LẤY ZALOPAY TOKEN ***
                 // Sử dụng suspend function createOrder() của bạn
                 val zpTransToken = createOrder(
-                    amount = _discountproduct.value.toLong(), // Sử dụng tổng tiền cuối cùng để tạo order ZaloPay
+                    amount = total.value.toLong(), // Sử dụng tổng tiền cuối cùng để tạo order ZaloPay
                     description = "Thanh toán đơn hàng ${orderId}"
                 )
 

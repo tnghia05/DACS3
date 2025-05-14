@@ -297,7 +297,7 @@ fun OrderDetailScreen(
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
                                     Text("Giảm giá:")
-                                    Text("-" + NumberFormat.getNumberInstance(Locale("vi", "VN")).format(orderData.discount) + "đ")
+                                    Text("-" + NumberFormat.getNumberInstance(Locale("vi", "VN")).format(orderData.subtotal - (1 -(orderData.discount/100)) * orderData.subtotal) +  "đ")
                                 }
                             }
 

@@ -12,9 +12,10 @@ import com.eritlab.jexmon.presentation.screens.admin.Brand.EditBrandScreen
 import com.eritlab.jexmon.presentation.screens.admin.BrandScreen
 import com.eritlab.jexmon.presentation.screens.admin.category.AddProductScreen
 import com.eritlab.jexmon.presentation.screens.admin.category.CategoryScreen
-import com.eritlab.jexmon.presentation.screens.admin.category.EditCategoryScreen
 import com.eritlab.jexmon.presentation.screens.admin.order.OrderDetailScreen
 import com.eritlab.jexmon.presentation.screens.admin.order.OrderManagementScreen
+import com.eritlab.jexmon.presentation.screens.admin.user.EditUserScreen
+import com.eritlab.jexmon.presentation.screens.admin.user.UserManagementScreen
 
 fun NavGraphBuilder.adminNavGraph(navHostController: NavHostController) {
     Log.d("Navigation", "AdminNavGraph is being set up")
@@ -54,7 +55,7 @@ fun NavGraphBuilder.adminNavGraph(navHostController: NavHostController) {
             Log.d("Navigation", "EditCategoryScreen composable created")
             val categoryId = backStackEntry.arguments?.getString("categoryId")
             categoryId?.let {
-                EditCategoryScreen( navHostController, categoryId = it)
+                AddProductScreen( navHostController, productId = it)
             }
         }
         composable(AdminScreen.OrderManagementScreen.route) {
@@ -71,6 +72,21 @@ fun NavGraphBuilder.adminNavGraph(navHostController: NavHostController) {
                     navController = navHostController,
                     orderId = it,
                     onBackClick = { navHostController.navigateUp() }
+                )
+            }
+        }
+        // Add User Management Routes
+        composable(AdminScreen.UserManagementScreen.route) {
+            Log.d("Navigation", "UserManagementScreen composable created")
+            UserManagementScreen(navHostController)
+        }
+        composable(AdminScreen.EditUserScreen.route) { backStackEntry ->
+            Log.d("Navigation", "EditUserScreen composable created")
+            val userId = backStackEntry.arguments?.getString("userId")
+            userId?.let {
+                EditUserScreen(
+                    navController = navHostController,
+                    userId = it
                 )
             }
         }

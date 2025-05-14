@@ -215,11 +215,13 @@ fun CheckoutScreen(
                     productName = cartItem.name,
                     productImageUrl = cartItem.imageUrl,
                     productPrice = cartItem.price,
+                    priceBeforeDiscount = cartItem.priceBeforeDiscount,
                     quantity = cartItem.quantity,
                     color = cartItem.color,
                     size = cartItem.size,
                     discount = cartItem.discount
                 )
+                Log.d("CheckoutScreen", "Product Item: ${cartItem.priceBeforeDiscount}")
                 Spacer(modifier = Modifier.height(8.dp)) // Thêm khoảng cách giữa các sản phẩm
             }
             // TODO: Thêm các item cart, phương thức thanh toán, tổng tiền, etc ở đây
@@ -283,7 +285,7 @@ fun CheckoutScreen(
                         }
                     }
                 },
-                total = discountproduct,
+                total = aftertotal,
                 dis = aftertotal,
                 discount = voucherDiscount
             )
@@ -593,7 +595,7 @@ fun ProductItem(
     productName: String,
     productImageUrl: String,
     productPrice: Double,
-    oldPrice: Double? = null, // Có thể null nếu không có giá cũ
+    priceBeforeDiscount: Double? = null, // Có thể null nếu không có giá cũ
     quantity: Int = 1,
     color: String ,
     size: Int,
@@ -667,14 +669,14 @@ fun ProductItem(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = formatPrice(productPrice * (1 - discount / 100)),
+                        text = formatPrice(productPrice ),
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp
                     )
                     if (discount != 0.0) {
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = formatPrice(productPrice),
+                            text = formatPrice(priceBeforeDiscount ?: 0.0),
                             color = Color.Gray,
                             fontSize = 14.sp,
                             modifier = Modifier.padding(top = 2.dp),
@@ -785,7 +787,7 @@ fun ProductItem(
                 )
 
                 Text(
-                    text = formatPrice(productPrice * (1 - discount / 100) * quantity),
+                    text = formatPrice(productPrice  * quantity),
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
                 )

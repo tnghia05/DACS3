@@ -14,4 +14,8 @@ sealed class AdminScreen(val route: String) {
     object OrderDetailScreen : AdminScreen("admin_order_detail_screen/{orderId}") {
         fun passOrderId(orderId: String) = "admin_order_detail_screen/$orderId"
     }
+    object UserManagementScreen : AdminScreen("admin_user_management_screen")
+    object EditUserScreen : AdminScreen("admin_edit_user_screen/{userId}") {
+        fun passUserId(userId: String) = "admin_edit_user_screen/$userId"
+    }
 }

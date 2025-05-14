@@ -16,19 +16,24 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.Button
+import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Card
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.ScrollableTabRow
+import androidx.compose.material.SnackbarHost
 import androidx.compose.material.Surface
 import androidx.compose.material.Tab
 import androidx.compose.material.TabRowDefaults
 import androidx.compose.material.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material.Text
+import androidx.compose.material.rememberScaffoldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,6 +49,9 @@ import coil.compose.AsyncImage
 import com.eritlab.jexmon.domain.model.OrderModel
 import com.eritlab.jexmon.presentation.common.component.DefaultBackArrow
 import com.eritlab.jexmon.presentation.ui.theme.TextColor
+import kotlinx.coroutines.launch
+import java.text.NumberFormat
+import java.util.Locale
 
 @Composable
 fun DonMua(
@@ -79,7 +87,7 @@ fun DonMua(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "Your Cart",
+                        text = "Đơn hàng",
                         color = MaterialTheme.colors.TextColor,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
@@ -92,7 +100,7 @@ fun DonMua(
         }
 
         // Status Filter
-        val tabs = listOf("Tất cả", "Chờ xác nhận", "Dang giao", "Đã giao", "Đã hủy")
+        val tabs = listOf("Tất cả", "Chờ xác nhận", "Đang giao", "Đã giao", "Đã hủy")
         var selectedTabIndex by remember { mutableStateOf(0) }
         Log.d("Tab", "Selected Tab Index: $selectedTabIndex")
 
@@ -156,7 +164,7 @@ fun DonMua(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(orders) { order ->
-                        OrderItem(order = order)
+                        OrderItem(order = order, viewModel = viewModel)
                     }
                 }
             }
@@ -183,7 +191,13 @@ fun FilterChip(
 }
 
 @Composable
-fun OrderItem(order: OrderModel) {
+fun OrderItem(
+    order: OrderModel,
+    viewModel: OrderViewModel = hiltViewModel()
+) {
+    val scope = rememberCoroutineScope()
+    val scaffoldState = rememberScaffoldState()
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -197,7 +211,7 @@ fun OrderItem(order: OrderModel) {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "Đơn hàng: ${order.id}",
+                    text = "Đơn hàng: ${if (order.id.length > 6) order.id.take(6) + "..." else order.id}",
                     fontWeight = FontWeight.Bold
                 )
                 Text(
@@ -255,11 +269,91 @@ fun OrderItem(order: OrderModel) {
             ) {
                 Text("Tổng tiền:", fontWeight = FontWeight.Medium)
                 Text(
-                    text = "${order.total}đ",
+                    text = "${formatPrice(order.total)}",
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colors.primary
                 )
             }
+
+            // Buttons Row
+            if (order.status != "Đã giao" && order.status != "Đã hủy") {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Cancel Button - Don't show for "Dang giao" status
+                    if (order.status != "Đang giao") {
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    viewModel.cancelOrder(
+                                        orderId = order.id,
+                                        onSuccess = {
+                                            scope.launch {
+                                                scaffoldState.snackbarHostState.showSnackbar("Đã hủy đơn hàng thành công")
+                                            }
+                                        },
+                                        onError = { error ->
+                                            scope.launch {
+                                                scaffoldState.snackbarHostState.showSnackbar(error)
+                                            }
+                                        }
+                                    )
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                backgroundColor = Color.Red,
+                                contentColor = Color.White
+                            ),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Hủy đơn hàng")
+                        }
+                    }
+
+                    // Received Button - Only show for "Dang giao" status
+                    if (order.status == "Đang giao") {
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    viewModel.markOrderAsReceived(
+                                        orderId = order.id,
+                                        onSuccess = {
+                                            scope.launch {
+                                                scaffoldState.snackbarHostState.showSnackbar("Đã xác nhận nhận hàng thành công")
+                                            }
+                                        },
+                                        onError = { error ->
+                                            scope.launch {
+                                                scaffoldState.snackbarHostState.showSnackbar(error)
+                                            }
+                                        }
+                                    )
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                backgroundColor = Color(0xFF4CAF50),
+                                contentColor = Color.White
+                            ),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Đã nhận")
+                        }
+                    }
+                }
+            }
         }
     }
+
+    SnackbarHost(
+        hostState = scaffoldState.snackbarHostState,
+        modifier = Modifier.padding(16.dp)
+    )
+}
+
+// Đảm bảo hàm formatPrice không thay đổi
+private fun formatPrice(price: Double): String {
+    val format = NumberFormat.getCurrencyInstance(Locale("vi", "VN"))
+    return format.format(price)
 }

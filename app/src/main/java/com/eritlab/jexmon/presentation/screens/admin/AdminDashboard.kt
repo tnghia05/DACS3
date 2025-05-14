@@ -205,7 +205,9 @@ fun AdminDashboard(navController: NavHostController) {
                     .padding(8.dp)
                     .weight(1f)
             ) {
-                // Empty column for symmetry
+                GridButton(label = "Manage Users") {
+                    navController.navigate(AdminScreen.UserManagementScreen.route)
+                }
             }
         }
     }

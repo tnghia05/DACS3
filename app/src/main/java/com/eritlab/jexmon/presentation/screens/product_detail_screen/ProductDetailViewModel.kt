@@ -222,6 +222,7 @@ class ProductDetailViewModel @Inject constructor(
             // Cập nhật trạng thái thêm giỏ hàng nếu cần
             // _state.value = _state.value.copy(isAddingToCart = true, addToCartSuccess = false, addToCartError = "")
 
+            Log.d("ProductDetailViewModel", "Adding item to cart: ${cartItem.priceBeforeDiscount}")
             val db = FirebaseFirestore.getInstance()
             val querySnapshot = db.collection("carts")
                 .whereEqualTo("userId", cartItem.userId)
