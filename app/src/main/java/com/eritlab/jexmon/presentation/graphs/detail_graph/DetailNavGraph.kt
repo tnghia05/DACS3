@@ -40,23 +40,26 @@ fun NavGraphBuilder.detailNavGraph(navController: NavHostController) {
 
         composable(DetailScreen.CheckoutScreen.route) {
             Log.d("Navigation", "Navigated to CheckoutScreen")
-            val cartItems = navController.previousBackStackEntry?.savedStateHandle?.get<List<CartItem>>("cartItems") ?: emptyList()
-            Log.d("Navigation", "Navigated to CheckoutScreen with cartItems: $cartItems")
-            CheckoutScreen(
-                navController = navController,
-                cartItems = cartItems,
-                onBackClick = { navController.popBackStack() },
-
+            val cartItems = navController.previousBackStackEntry?.savedStateHandle?.get<List<CartItem>>("cartItems")
+            Log.d("Navigation", "Retrieved cartItems from savedStateHandle: $cartItems")
+            
+            if (cartItems != null) {
+                CheckoutScreen(
+                    navController = navController,
+                    cartItems = cartItems,
+                    onBackClick = { navController.popBackStack() }
                 )
+            } else {
+                Log.e("Navigation", "No cart items found in savedStateHandle")
+                // Handle the error case, maybe show a message or navigate back
+                navController.popBackStack()
+            }
         }
-        composable("voucher_screen") { backStackEntry ->
-            // Lấy voucherCode từ argument
-            val voucherCode = backStackEntry.arguments?.getString("voucherCode")
-
-            // Truyền voucherCode vào VoucherScreen
-            VoucherScreen(navController = navController,
-                viewModel = hiltViewModel<CheckoutViewModel>()
-                , onBackClick = { navController.popBackStack() }
+        composable(DetailScreen.VoucherScreen.route) { backStackEntry ->
+            VoucherScreen(
+                navController = navController,
+                viewModel = hiltViewModel<CheckoutViewModel>(),
+                onBackClick = { navController.popBackStack() }
             )
         }
 
@@ -86,6 +89,11 @@ fun NavGraphBuilder.detailNavGraph(navController: NavHostController) {
                 onNavigateToCart = { navController.navigate(DetailScreen.CartScreen.route) },
                 onNavigateToProduct = { newProductId -> 
                     navController.navigate("${DetailScreen.ProductDetailScreen.route}/$newProductId")
+                },
+                onNavigateToCheckout = { cartItems ->
+                    Log.d("Navigation", "Setting cartItems in savedStateHandle: $cartItems")
+                    navController.currentBackStackEntry?.savedStateHandle?.set("cartItems", cartItems)
+                    navController.navigate(DetailScreen.CheckoutScreen.route)
                 }
             )
         }   

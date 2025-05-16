@@ -65,17 +65,21 @@ fun CheckoutScreen(
 ) {
     val context = LocalContext.current
     var zpTransToken by remember { mutableStateOf("") } // Token cho ZaloPay
+
+    // Add LaunchedEffect to set cart items when screen is created
+    LaunchedEffect(cartItems) {
+        Log.d("CheckoutScreen", "Setting cart items in ViewModel: $cartItems")
+        viewModel.setCartItems(cartItems)
+    }
+
     LaunchedEffect(Unit) {
-        viewModel.fetchCartItems()
-        viewModel.fetchDefaultShippingAddress() // <<< GỌI THÊM DÒNG NÀY
-        viewModel.fetchSelectedVoucher() // <<< Thêm dòng này
-
-
+        viewModel.fetchDefaultShippingAddress()
+        viewModel.fetchSelectedVoucher()
     }
 
     var selectedPaymentMethod by remember { mutableStateOf("COD") }
 
-    val cartItems by viewModel.cartItems // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< thêm dòng này nè
+    val viewModelCartItems by viewModel.cartItems
     val shippingAddress by viewModel.shippingAddress
     val paymentMethod by viewModel.paymentMethod
 
@@ -120,7 +124,7 @@ fun CheckoutScreen(
                             Log.d("CheckoutScreen", "ZaloPay SUCCESS: $transactionId, $transToken, $appTransID")
                             // Báo cho ViewModel kết quả thành công
                          viewModel.handleZaloPayResult(null, transToken, appTransID)
-                            viewModel.increaseSoldForOrder(cartItems)
+                            viewModel.increaseSoldForOrder(viewModelCartItems)
                             navController.navigate(DetailScreen.PaymentSuccessScreen.route)
                             // ViewModel sẽ xử lý logic sa thành công (xóa cart, update order, navigate)
                         }
@@ -208,8 +212,8 @@ fun CheckoutScreen(
 
             }
 
-            items(cartItems.size) { index ->
-                val cartItem = cartItems[index]
+            items(viewModelCartItems.size) { index ->
+                val cartItem = viewModelCartItems[index]
                 ProductItem(
                     storeName = "EritLab Store", // hoặc nếu bạn có storeName thì lấy ra
                     productName = cartItem.name,
@@ -230,8 +234,12 @@ fun CheckoutScreen(
                     voucherCode = selectedVoucher?.code ?: "Chưa chọn voucher",
                     voucherDescription = selectedVoucher?.detail ?: "Chưa có mô tả",
                     onClick = {
-                        val code = selectedVoucher?.code ?: ""
-                        navController.navigate("voucher_screen")
+                        // Lưu cart items vào savedStateHandle trước khi điều hướng
+                        navController.currentBackStackEntry?.savedStateHandle?.set("cartItems", viewModelCartItems)
+                        navController.navigate(DetailScreen.VoucherScreen.route) {
+                            // Giữ lại màn hình CheckoutScreen trong back stack
+                            restoreState = true
+                        }
                     }
                 )
 
@@ -260,28 +268,40 @@ fun CheckoutScreen(
             ShopeeFooter(
                 onClick = {
                     Log.d("CheckoutScreen", "Selected payment method: $selectedPaymentMethod")
-                    Log.d ("CheckoutScreen", "Selected voucher: $paymentMethod ")
+                    Log.d("CheckoutScreen", "Selected voucher: $paymentMethod")
                     when (selectedPaymentMethod) {
                         "ZaloPay" -> {
                             viewModel.processPayment(
                                 onSuccess = {
-                                    // Callback này sẽ được gọi từ ViewModel nếu KHÔNG phải ZaloPay
-                                    // hoặc từ ZaloPayListener -> ViewModel -> Composable nếu là ZaloPay THÀNH CÔNG.
-                                            viewModel.increaseSoldForOrder(cartItems)
-
+                                    viewModel.increaseSoldForOrder(viewModelCartItems)
                                     Log.d("CheckoutScreen", "Payment process successful (Callback). Navigating...")
-                                    navController.navigate("order_success_screen") // Điều hướng đến màn hình thành công
+                                    navController.navigate("order_success_screen")
                                 },
                                 onError = { errorMessage ->
-                                    // Callback này sẽ được gọi từ ViewModel nếu có lỗi (backend, ZaloPay fail/cancel)
                                     Log.e("CheckoutScreen", "Payment process failed (Callback): $errorMessage")
-                                    // ViewModel sẽ cập nhật state error, hiển thị Snackbar thông qua Effect bên trên
-                                    // hoặc bạn xử lý hiển thị thông báo ở đây nếu không dùng state error chung
+                                }
+                            )
+                        }
+                        "COD" -> {
+                            viewModel.processPayment(
+                                onSuccess = {
+                                    viewModel.increaseSoldForOrder(viewModelCartItems)
+                                    Log.d("CheckoutScreen", "COD order successful. Navigating...")
+                                    navController.navigate(DetailScreen.PaymentSuccessScreen.route) {
+                                        // Chỉ xóa màn hình CheckoutScreen khỏi back stack
+                                        popUpTo(navController.currentBackStackEntry?.destination?.route ?: return@navigate) {
+                                            inclusive = true // Bao gồm cả màn hình hiện tại
+                                        }
+                                    }
+                                },
+                                onError = { errorMessage ->
+                                    Log.e("CheckoutScreen", "COD order failed: $errorMessage")
                                 }
                             )
                         }
                         else -> {
                             // Xử lý các phương thức thanh toán khác
+                            Log.d("CheckoutScreen", "Payment method not implemented: $selectedPaymentMethod")
                         }
                     }
                 },

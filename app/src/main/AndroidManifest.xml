@@ -13,9 +13,16 @@
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Jexmon"
+        android:enableOnBackInvokedCallback="true"
         tools:targetApi="31">
+
+        <!-- Debug App Check Token -->
+        <meta-data
+            android:name="firebase_appcheck_debug_token"
+            android:value="DEBB47A9-4F49-47BE-9C33-0E26EF8B8A89" />
 
         <activity
             android:name=".presentation.MainActivity"

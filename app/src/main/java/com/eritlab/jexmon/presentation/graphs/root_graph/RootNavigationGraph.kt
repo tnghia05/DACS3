@@ -64,6 +64,11 @@ fun RootNavigationGraph(navHostController: NavHostController, context: Context,
 
 //                    navController.navigate("${DetailScreen.ProductDetailScreen.route}/$newProductId")
                 }
+                ,
+                onNavigateToCheckout = { cartItems ->
+                    navHostController.currentBackStackEntry?.savedStateHandle?.set("cartItems", cartItems)
+                    navHostController.navigate(DetailScreen.CheckoutScreen.route)
+                }
 
             )
         }

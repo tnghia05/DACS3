@@ -136,8 +136,11 @@ class CheckoutViewModel @Inject constructor(
         Log.d("CheckoutViewModel", "Discounted Total: ${_discountproduct.value}")
         // Ghi log tổng giá sau khi đã áp dụng giảm giá
         if (_selectedVoucher.value != null) {
+            Log.d("CheckoutViewModel", "Discounted Total1: ${_discountproduct.value}")
+
             Log.d("CheckoutViewModel", "Selected Voucher: ${_selectedVoucher.value!!.discount}")
             _discountproduct.value = discountedTotal - (_selectedVoucher.value!!.discount * discountedTotal / 100)
+            Log.d("CheckoutViewModel", "Discounted Total: ${_discountproduct.value}")
         } else {
             _discountproduct.value = discountedTotal
         }
@@ -160,6 +163,7 @@ class CheckoutViewModel @Inject constructor(
         val subtotal = _cartItems.value.sumOf { it.price * it.quantity }
         _subtotal.value = subtotal
         Log.d("CheckoutViewModel", "Subtotal: ${formatPrice(subtotal)}")
+        Log.d("CheckoutViewModel", "Discount: ${_discount.value}")
         _total.value = subtotal  - (_discount.value * subtotal / 100)
         Log.d("CheckoutViewModel", "Total: ${formatPrice(_total.value)}")
     }
@@ -426,32 +430,37 @@ class CheckoutViewModel @Inject constructor(
         }
         if (paymentMethod != "ZaloPay") {
             // Xử lý các phương thức không phải ZaloPay ở đây
-            // VD: Chỉ lưu order vào DB và xóa cart, sau đó gọi onSuccess
             _isLoading.value = true // Bắt đầu loading cho COD
             viewModelScope.launch(Dispatchers.IO) {
                 try {
-                    val order = OrderModel( // Tạo order cho COD
+                    val order = OrderModel(
                         userId = userId,
                         items = cartItems,
                         shippingAddress = shippingAddress,
                         paymentMethod = paymentMethod,
-                        subtotal = _subtotal.value, // Tổng tiền hàng gốc
-                        discount = discount.value, // Số tiền giảm giá voucher
-                        shippingFee = _shippingFee.value, // Phí vận chuyển
-                        total = total.value, // Tổng tiền cuối cùng
-                        status = "Pending COD" // Trạng thái COD
+                        subtotal = _subtotal.value,
+                        discount = discount.value,
+                        shippingFee = _shippingFee.value,
+                        total = total.value,
+                        status = "Chờ xác nhận", // Trạng thái chờ xác nhận cho COD
+                        paymentStatus = "Chưa thanh toán" // Trạng thái chưa thanh toán cho COD
                     )
                     val documentRef = db.collection("orders").add(order).await()
                     db.collection("orders").document(documentRef.id).update("id", documentRef.id).await()
+                    
                     // Xóa voucher đã chọn nếu có
                     _selectedVoucher.value?.let { voucher ->
                         db.collection("vouchers").document(voucher.code).update("Chon", false).await()
                     }
-                    // Chuyển về Main thread để gọi callback UI
-                    launch(Dispatchers.Main) {
-                        onSuccess() // Gọi onSuccess cho COD
-                        _isLoading.value = false // Kết thúc loading cho COD
-                        _selectedVoucher.value = null // Xóa voucher đã chọn khỏi state UI
+
+                    // Xóa giỏ hàng sau khi đặt hàng thành công
+                    clearCart(userId) {
+                        // Chuyển về Main thread để gọi callback UI
+                        viewModelScope.launch(Dispatchers.Main) {
+                            onSuccess() // Gọi onSuccess cho COD
+                            _isLoading.value = false // Kết thúc loading cho COD
+                            _selectedVoucher.value = null // Xóa voucher đã chọn khỏi state UI
+                        }
                     }
                 } catch (e: Exception) {
                     launch(Dispatchers.Main) {
@@ -492,10 +501,13 @@ class CheckoutViewModel @Inject constructor(
 
                 // *** BƯỚC QUAN TRỌNG: GỌI BACKEND ĐỂ LẤY ZALOPAY TOKEN ***
                 // Sử dụng suspend function createOrder() của bạn
+
                 val zpTransToken = createOrder(
-                    amount = total.value.toLong(), // Sử dụng tổng tiền cuối cùng để tạo order ZaloPay
+                    amount = _total.value.toLong(), // Sử dụng tổng tiền cuối cùng để tạo order ZaloPay
                     description = "Thanh toán đơn hàng ${orderId}"
                 )
+                Log.d("ZaloPayRequest", "amount: ${_discountproduct.value.toLong()}")
+
 
                 // *** Cập nhật state zaloPayToken ***
                 // Việc cập nhật này sẽ được Composable quan sát và kích hoạt gọi SDK
@@ -545,7 +557,7 @@ class CheckoutViewModel @Inject constructor(
                 null -> { // Thành công (errorCode == null trong onPaymentSucceeded)
                     Log.d("ZaloPay Result", "SUCCESS: TransactionId: $transToken, AppTransID: $appTransID, OrderId: $orderId")
                     orderId?.let {
-                        db.collection("orders").document(it).update("status", "Dang giao").await()
+                        db.collection("orders").document(it).update("status", "Đang giao").await()
                         db.collection("orders").document(it).update("paymentStatus", "ZaloPay").await()
 
                         _selectedVoucher.value?.let { voucher ->
