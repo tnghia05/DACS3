@@ -1,6 +1,7 @@
 package com.eritlab.jexmon.presentation.graphs.home_graph
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -12,8 +13,6 @@ import com.eritlab.jexmon.presentation.graphs.detail_graph.DetailScreen
 import com.eritlab.jexmon.presentation.graphs.detail_graph.detailNavGraph
 import com.eritlab.jexmon.presentation.screens.brands.BrandsHome
 import com.eritlab.jexmon.presentation.screens.chat_list_screen.ChatListScreen
-import com.eritlab.jexmon.presentation.screens.conversation_screen.component.ChatRepository
-import com.eritlab.jexmon.presentation.screens.conversation_screen.component.ConversationScreen
 import com.eritlab.jexmon.presentation.screens.dashboard_screen.component.DashboardScreen
 import com.eritlab.jexmon.presentation.screens.don_da_mua.DonMua
 import com.eritlab.jexmon.presentation.screens.don_da_mua.OrderDetailScreen
@@ -25,11 +24,12 @@ import com.eritlab.jexmon.presentation.screens.profile_screen.component.ProfileS
 @Composable
 fun HomeNavGraph(navHostController: NavHostController) {
     val navController = navHostController
+    val context = LocalContext.current
+    
     NavHost(
         navController = navHostController,
         route = Graph.HOME,
         startDestination = ShopHomeScreen.DashboardScreen.route
-
     ) {
         detailNavGraph(navController = navHostController)
         adminNavGraph(navHostController = navHostController)
@@ -47,9 +47,8 @@ fun HomeNavGraph(navHostController: NavHostController) {
         }
         composable(ShopHomeScreen.FavouriteScreen.route) {
             FavouriteScreen(
-
                 onProductClick = { productId ->
-                    navController.navigate(ShopHomeScreen.ExistingConversationScreen.createRoute(productId))
+                    navController.navigate(DetailScreen.ExistingChatScreen.createRoute(productId))
                 },
                 onCartClick = { _ ->
                     navHostController.navigate(DetailScreen.CartScreen.route)
@@ -57,8 +56,11 @@ fun HomeNavGraph(navHostController: NavHostController) {
             )
         }
         composable(ShopHomeScreen.ChatListScreen.route) {
-          ChatListScreen(
-                navController = navHostController
+            ChatListScreen(
+                navController = navHostController,
+                onNewChat = {
+                    navHostController.navigate(DetailScreen.NewChatScreen.route)
+                }
             )
         }
 
@@ -66,15 +68,13 @@ fun HomeNavGraph(navHostController: NavHostController) {
             ProfileScreen(
                 navController = navHostController,
                 onBackBtnClick = { navHostController.popBackStack() },
-
             )
         }
         composable(ShopHomeScreen.DonMuaScreen.route){
             DonMua (
                 navController = navHostController,
                 onBackBtnClick = { navHostController.popBackStack() },
-
-                )
+            )
         }
 
         composable(
@@ -86,14 +86,6 @@ fun HomeNavGraph(navHostController: NavHostController) {
                 navController = navHostController,
                 orderId = orderId,
                 onBackClick = { navHostController.popBackStack() }
-            )
-        }
-
-        composable(ShopHomeScreen.ConversationScreen.route) {
-            ConversationScreen(
-                navController = navController,
-                idChat = "", // Chat mới
-                chatRepository = ChatRepository()
             )
         }
 
@@ -110,7 +102,6 @@ fun HomeNavGraph(navHostController: NavHostController) {
                 }
             )
         }
-
 
         composable(
             route = "brands_home_screen/{categoryId}",
@@ -129,7 +120,6 @@ fun HomeNavGraph(navHostController: NavHostController) {
             arguments = listOf(navArgument("brandId") {
                 defaultValue = "all" // nếu không truyền thì mặc định là "all"
             })
-
         ) { backStackEntry ->
             val brandId = backStackEntry.arguments?.getString("brandId") ?: "all"
             ProductsHome(
@@ -142,20 +132,6 @@ fun HomeNavGraph(navHostController: NavHostController) {
             )
         }
 
-
-
-        composable(
-            route = ShopHomeScreen.ExistingConversationScreen.route,
-            arguments = listOf(navArgument("chatId") { defaultValue = "" })
-        ) { backStackEntry ->
-            val chatId = backStackEntry.arguments?.getString("chatId") ?: ""
-            ConversationScreen(
-                navController = navController,
-                idChat = chatId,
-                chatRepository = ChatRepository()
-            )
-        }
-
         composable(
             route = "profile_detail/{uid}",
             arguments = listOf(navArgument("uid") { type = NavType.StringType })
@@ -163,6 +139,5 @@ fun HomeNavGraph(navHostController: NavHostController) {
             val uid = backStackEntry.arguments?.getString("uid") ?: ""
             EditProfileScreen(uid = uid)
         }
-
     }
 }

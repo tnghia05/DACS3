@@ -11,6 +11,13 @@ sealed class DetailScreen(val route: String) {
     object CheckoutScreen : DetailScreen("checkout_screen")
     object PaymentSuccessScreen : DetailScreen("payment_success_screen")
 
-    // Sử dụng Constrains.PRODUCT_ID_PARAM từ common
-    object ProductDetailScreen : DetailScreen("product_detail_screen/{${Constrains.PRODUCT_ID_PARAM}}")
+    object ProductDetailScreen : DetailScreen("product_detail_screen/{${Constrains.PRODUCT_ID_PARAM}}") {
+        fun createRoute(productId: String) = "product_detail_screen/$productId"
+    }
+
+    object NewChatScreen : DetailScreen("new_chat_screen")
+
+    object ExistingChatScreen : DetailScreen("chat_screen/{chatId}") {
+        fun createRoute(chatId: String) = "chat_screen/$chatId"
+    }
 }

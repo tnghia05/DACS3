@@ -2,11 +2,10 @@ package com.eritlab.jexmon.presentation.graphs.home_graph
 
 sealed class ShopHomeScreen(val route: String) {
     object DashboardScreen : ShopHomeScreen("dashboard_screen")
-    object ConversationScreen : ShopHomeScreen("conversation_screen") // Chat mới
-    object ProfileScreen : ShopHomeScreen("profile_screen")
     object FavouriteScreen : ShopHomeScreen("favourite_screen")
-    object DonMuaScreen : ShopHomeScreen("don_mua_screen")
     object ChatListScreen : ShopHomeScreen("chat_list_screen")
+    object ProfileScreen : ShopHomeScreen("profile_screen")
+    object DonMuaScreen : ShopHomeScreen("don_mua_screen")
     object OrderDetailScreen : ShopHomeScreen("order_detail_screen/{orderId}") {
         fun createRoute(orderId: String) = "order_detail_screen/$orderId"
     }

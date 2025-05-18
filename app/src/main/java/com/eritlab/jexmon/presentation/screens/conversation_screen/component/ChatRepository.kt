@@ -1,236 +1,127 @@
 package com.eritlab.jexmon.presentation.screens.conversation_screen.component
 
+import android.content.Context
 import android.util.Log
 import com.eritlab.jexmon.domain.model.Message
-import com.eritlab.jexmon.di.JexmonApplication
 import com.google.firebase.appcheck.FirebaseAppCheck
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.SetOptions
-import com.google.firebase.functions.FirebaseFunctions
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.tasks.await
+import java.util.UUID
 
-class ChatRepository {
-    private val functions = FirebaseFunctions.getInstance("us-central1")
+class ChatRepository(private val context: Context) {
     private val db = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
     private val appCheck = FirebaseAppCheck.getInstance()
+    private val vertexAIService = VertexAIService(context)
+    private val TAG = "ChatRepository"
 
-    suspend fun createNewChat(userId: String): Result<String> {
+    suspend fun createNewChat(userId: String): AIResult<String> {
         return try {
-            // Kiểm tra xác thực
-            val user = auth.currentUser
-            if (user == null) {
-                return Result.failure(Exception("Vui lòng đăng nhập để tiếp tục"))
-            }
-
-            // Tạo chat mới
-            val chatData = mapOf(
-                "participants" to listOf(userId, "AI_ASSISTANT"),
-                "name" to "AI Assistant",
-                "lastMessage" to "",
-                "lastMessageTime" to FieldValue.serverTimestamp(),
-                "unreadCount" to 0,
-                "ownerId" to userId
-            )
-
-            val chatRef = db.collection("chats").document()
-            chatRef.set(chatData).await()
-
-            Result.success(chatRef.id)
-        } catch (e: Exception) {
-            Log.e("ChatRepository", "Error creating new chat", e)
-            Result.failure(e)
-        }
-    }
-
-    suspend fun sendUserMessage(chatId: String, userId: String, message: String): Result<Unit> {
-        return try {
-            val user = auth.currentUser
-            if (user == null) {
-                return Result.failure(Exception("Vui lòng đăng nhập để tiếp tục"))
-            }
-
-            // Đợi App Check khởi tạo với thời gian chờ tăng dần
-            var waitTime = 1000L
-            var attempts = 0
-            val maxAttempts = 3
-
-            while (!JexmonApplication.isAppCheckInitialized() && attempts < maxAttempts) {
-                delay(waitTime)
-                waitTime *= 2
-                attempts++
-                Log.d(TAG, "Đang đợi App Check khởi tạo, lần thử $attempts")
-            }
-
-            if (!JexmonApplication.isAppCheckInitialized()) {
-                JexmonApplication.resetAppCheckState()
-                return Result.failure(Exception("Không thể xác thực ứng dụng. Vui lòng thử lại sau."))
-            }
-
-            // Lấy token App Check mới
-            val appCheckToken = try {
-                appCheck.getToken(true).await()
-            } catch (e: Exception) {
-                Log.e(TAG, "Lỗi lấy token App Check", e)
-                return Result.failure(Exception("Lỗi xác thực. Vui lòng thử lại sau."))
-            }
-
-            // Lưu tin nhắn người dùng
-            val chatRef = db.collection("chats").document(chatId)
-            chatRef.collection("messages").add(
-                mapOf(
-                    "senderId" to userId,
-                    "message" to message,
-                    "timestamp" to FieldValue.serverTimestamp(),
-                    "from" to "user"
-                )
-            ).await()
-
-            // Cập nhật thông tin chat
-            chatRef.set(
-                mapOf(
-                    "lastMessage" to message,
-                    "lastMessageTime" to FieldValue.serverTimestamp()
-                ),
-                SetOptions.merge()
-            ).await()
-
-            // Gọi Cloud Function với token mới
-            val data = hashMapOf(
-                "message" to message,
-                "appCheckToken" to appCheckToken.token
+            val chatId = UUID.randomUUID().toString()
+            val chat = hashMapOf(
+                "userId" to userId,
+                "createdAt" to System.currentTimeMillis(),
+                "lastMessage" to "Chat started",
+                "lastMessageTime" to System.currentTimeMillis()
             )
             
-            try {
-                val result = functions
-                    .getHttpsCallable("processChat")
-                    .call(data)
-                    .await()
-
-                val response = result.data as? Map<*, *>
-                val botReply = response?.get("reply") as? String 
-                    ?: "Xin lỗi, tôi không thể xử lý yêu cầu lúc này"
-
-                // Lưu phản hồi của bot
-                chatRef.collection("messages").add(
-                    mapOf(
-                        "senderId" to "AI_ASSISTANT",
-                        "message" to botReply,
-                        "timestamp" to FieldValue.serverTimestamp(),
-                        "from" to "bot"
-                    )
-                ).await()
-
-                // Cập nhật thông tin chat với phản hồi của bot
-                chatRef.set(
-                    mapOf(
-                        "lastMessage" to botReply,
-                        "lastMessageTime" to FieldValue.serverTimestamp()
-                    ),
-                    SetOptions.merge()
-                ).await()
-
-                Result.success(Unit)
-            } catch (e: Exception) {
-                Log.e(TAG, "Lỗi xử lý phản hồi của bot", e)
-                
-                val errorMessage = when {
-                    e.message?.contains("Too many attempts") == true -> 
-                        "Hệ thống đang xử lý nhiều yêu cầu. Vui lòng thử lại sau ít phút."
-                    e.message?.contains("Unauthenticated") == true -> {
-                        JexmonApplication.resetAppCheckState()
-                        "Phiên đăng nhập đã hết hạn. Vui lòng thử lại."
-                    }
-                    e.message?.contains("resource-exhausted") == true -> 
-                        "Hệ thống đang tạm thời quá tải. Vui lòng thử lại sau."
-                    e.message?.contains("permission-denied") == true -> 
-                        "Bạn không có quyền thực hiện thao tác này."
-                    e.message?.contains("not-found") == true -> 
-                        "Không tìm thấy thông tin yêu cầu."
-                    e.message?.contains("failed-precondition") == true -> {
-                        JexmonApplication.resetAppCheckState()
-                        "Lỗi xác thực ứng dụng. Vui lòng thử lại sau."
-                    }
-                    e.message?.contains("network") == true ->
-                        "Lỗi kết nối mạng. Vui lòng kiểm tra kết nối và thử lại."
-                    else -> "Đã có lỗi xảy ra. Vui lòng thử lại."
-                }
-
-                chatRef.collection("messages").add(
-                    mapOf(
-                        "senderId" to "AI_ASSISTANT",
-                        "message" to errorMessage,
-                        "timestamp" to FieldValue.serverTimestamp(),
-                        "from" to "error"
-                    )
-                ).await()
-
-                Result.failure(Exception(errorMessage))
-            }
+            db.collection("chats").document(chatId).set(chat).await()
+            AIResult.Success(chatId)
         } catch (e: Exception) {
-            Log.e(TAG, "Lỗi gửi tin nhắn", e)
-            Result.failure(Exception("Không thể gửi tin nhắn. Vui lòng thử lại sau."))
+            Log.e(TAG, "Error creating chat", e)
+            AIResult.Error(e)
         }
     }
 
-    suspend fun getBotReplyAndSave(
-        chatId: String,
-        userId: String,
-        userMessage: String
-    ): Result<Map<String, Any>> {
-        return try {
-            // Kiểm tra xác thực
-            val user = auth.currentUser
-            if (user == null) {
-                return Result.failure(Exception("Vui lòng đăng nhập để tiếp tục"))
-            }
-
-            // Lấy token App Check
-            val appCheckToken = appCheck.getToken(false).await()
-
-            // Gọi Cloud Function
-            val data = mapOf(
-                "message" to userMessage,
-                "appCheckToken" to appCheckToken.token
-            )
-
-            val result = functions.getHttpsCallable("processChat")
-                .call(data)
-                .await()
-
-            val responseData = result.data
-            val responseMap = responseData as? Map<*, *>
-            val botReply = responseMap?.get("reply") as? String ?: "Không có phản hồi"
-
-            // Lưu phản hồi vào Firestore
-            val chatRef = db.collection("chats").document(chatId)
-            chatRef.set(
-                mapOf(
-                    "lastMessage" to botReply,
-                    "lastMessageTime" to FieldValue.serverTimestamp()
-                ),
-                SetOptions.merge()
-            ).await()
-
-            chatRef.collection("messages").add(
-                mapOf(
-                    "senderId" to "AI_ASSISTANT",
-                    "message" to botReply,
-                    "timestamp" to FieldValue.serverTimestamp(),
-                    "from" to "bot"
+    suspend fun sendUserMessage(chatId: String, userId: String, message: String): AIResult<Unit> {
+        var retryCount = 0
+        val maxRetries = 3
+        
+        while (retryCount < maxRetries) {
+            try {
+                val messageId = "${UUID.randomUUID()}_${System.nanoTime()}"
+                val messageData = hashMapOf(
+                    "messageId" to messageId,
+                    "text" to message,
+                    "isFromUser" to 1,
+                    "timestamp" to System.currentTimeMillis(),
+                    "userId" to userId,
+                    "type" to "text"
                 )
-            ).await()
 
-            @Suppress("UNCHECKED_CAST")
-            Result.success(responseMap as? Map<String, Any> ?: mapOf("reply" to botReply))
+                db.collection("chats")
+                    .document(chatId)
+                    .collection("messages")
+                    .document(messageId)
+                    .set(messageData)
+                    .await()
+
+                // Update last message in chat document
+                db.collection("chats")
+                    .document(chatId)
+                    .update(
+                        mapOf(
+                            "lastMessage" to message,
+                            "lastMessageTime" to FieldValue.serverTimestamp()
+                        )
+                    ).await()
+
+                return AIResult.Success(Unit)
+            } catch (e: Exception) {
+                retryCount++
+                if (retryCount >= maxRetries) {
+                    Log.e(TAG, "Failed to send message after $maxRetries attempts", e)
+                    return AIResult.Error(e)
+                }
+                delay(1000L * retryCount) // Exponential backoff
+            }
+        }
+        return AIResult.Error(Exception("Failed to send message after $maxRetries attempts"))
+    }
+
+    suspend fun getBotReplyAndSave(chatId: String, userId: String, userMessage: String): AIResult<Map<String, Any>> {
+        return try {
+            when (val aiResponse = vertexAIService.generateResponse(userMessage)) {
+                is AIResult.Success -> {
+                    val processedResponse = if (aiResponse.data.contains("[PRODUCT_START]")) {
+                        aiResponse.data
+                    } else {
+                        aiResponse.data.replace("[PRODUCT_START]", "")
+                            .replace("[PRODUCT_END]", "")
+                    }
+
+                    val messageId = "${UUID.randomUUID()}_${System.nanoTime()}"
+                    val botMessage = hashMapOf(
+                        "messageId" to messageId,
+                        "text" to processedResponse,
+                        "isFromUser" to false,
+                        "timestamp" to System.currentTimeMillis(),
+                        "userId" to userId,
+                        "type" to if (processedResponse.contains("[PRODUCT_START]")) "product" else "text"
+                    )
+
+                    db.collection("chats")
+                        .document(chatId)
+                        .collection("messages")
+                        .document(messageId)
+                        .set(botMessage)
+                        .await()
+
+                    AIResult.Success(mapOf("reply" to processedResponse))
+                }
+                is AIResult.Error -> {
+                    throw aiResponse.exception
+                }
+            }
         } catch (e: Exception) {
-            Log.e("ChatRepository", "Error getting bot reply", e)
-            Result.failure(e)
+            Log.e(TAG, "Error getting bot reply", e)
+            AIResult.Error(e)
         }
     }
 
@@ -322,40 +213,92 @@ class ChatRepository {
             }
     }
 
-    fun listenForMessages(chatId: String, onMessagesUpdated: (List<Message>) -> Unit): ListenerRegistration {
-        return db.collection("chats")
+    private fun parseMessage(doc: DocumentSnapshot): Message? {
+        return try {
+            val messageId = doc.getString("messageId") ?: doc.id
+            
+            val isFromUser = try {
+                when (val value = doc.get("isFromUser")) {
+                    is Boolean -> value
+                    is Long -> value == 1L
+                    is Int -> value == 1
+                    is String -> value.toLowerCase() == "true" || value == "1"
+                    else -> false
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error parsing isFromUser", e)
+                false
+            }
+
+            val text = doc.getString("text") ?: ""
+
+            val timestamp = try {
+                doc.getLong("timestamp") ?: System.currentTimeMillis()
+            } catch (e: Exception) {
+                System.currentTimeMillis()
+            }
+
+            Message(
+                messageId = messageId,
+                text = text,
+                isFromUser = isFromUser,
+                timestamp = timestamp
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Error parsing message", e)
+            null
+        }
+    }
+
+    fun listenForMessages(chatId: String, limit: Int = 20, onUpdate: (List<Message>) -> Unit) {
+        if (chatId.isBlank()) {
+            Log.e(TAG, "Invalid chat ID")
+            onUpdate(emptyList())
+            return
+        }
+
+        db.collection("chats")
             .document(chatId)
             .collection("messages")
-            .orderBy("timestamp", Query.Direction.ASCENDING)
+            .orderBy("timestamp", Query.Direction.DESCENDING)
+            .limit(limit.toLong())
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    Log.e("ChatRepository", "Error listening for messages", error)
+                    Log.e(TAG, "Error listening for messages", error)
                     return@addSnapshotListener
                 }
                 
-                if (snapshot == null) {
-                    Log.d("ChatRepository", "Snapshot is null")
-                    return@addSnapshotListener
-                }
-
-                val messages = snapshot.documents.mapNotNull { doc ->
-                    try {
-                        Message(
-                            text = doc.getString("message") ?: "",
-                            isFromUser = doc.getString("from") == "user",
-                            timestamp = doc.getTimestamp("timestamp")?.toDate()?.time ?: System.currentTimeMillis()
-                        )
-                    } catch (e: Exception) {
-                        Log.e("ChatRepository", "Error mapping message", e)
-                        null
-                    }
-                }
-                
-                onMessagesUpdated(messages)
+                val messages = snapshot?.documents
+                    ?.mapNotNull { doc -> parseMessage(doc) }
+                    ?.distinctBy { it.messageId }
+                    ?.sortedBy { it.timestamp }
+                    ?: emptyList()
+                    
+                onUpdate(messages)
             }
     }
 
-    companion object {
-        private const val TAG = "ChatRepository"
+    suspend fun loadMoreMessages(chatId: String, beforeTimestamp: Long, pageSize: Int): List<Message> {
+        if (chatId.isBlank()) {
+            Log.e(TAG, "Invalid chat ID")
+            return emptyList()
+        }
+
+        return try {
+            db.collection("chats")
+                .document(chatId)
+                .collection("messages")
+                .orderBy("timestamp", Query.Direction.DESCENDING)
+                .whereLessThan("timestamp", beforeTimestamp)
+                .limit(pageSize.toLong())
+                .get()
+                .await()
+                .documents
+                .mapNotNull { doc -> parseMessage(doc) }
+                .sortedBy { it.timestamp }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error loading more messages", e)
+            emptyList()
+        }
     }
 }

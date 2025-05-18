@@ -37,7 +37,4 @@ data class ProductModel(
             createdAt = this.createdAt.seconds // Chuyển Timestamp → Long
         )
     }
-
-
-
 }

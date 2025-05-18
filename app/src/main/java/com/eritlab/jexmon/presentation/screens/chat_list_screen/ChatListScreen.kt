@@ -40,7 +40,10 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 
 @Composable
-fun ChatListScreen(navController: NavController) {
+fun ChatListScreen(
+    navController: NavController,
+    onNewChat: () -> Unit = {}
+) {
     val firestore = FirebaseFirestore.getInstance()
     val currentUser = FirebaseAuth.getInstance().currentUser
     var chatList by remember { mutableStateOf<List<ChatPreview>>(emptyList()) }
@@ -79,7 +82,7 @@ fun ChatListScreen(navController: NavController) {
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
-        Column(modifier = Modifier.fillMaxSize()) { // 👈 phải fillMaxSize ở đây
+        Column(modifier = Modifier.fillMaxSize()) {
             TopAppBar(
                 title = { 
                     Text(
@@ -94,7 +97,7 @@ fun ChatListScreen(navController: NavController) {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f) // 👈 QUAN TRỌNG: để tránh lỗi infinite height
+                    .weight(1f)
             ) {
                 items(chatList) { chat ->
                     ChatListItem(
@@ -109,9 +112,7 @@ fun ChatListScreen(navController: NavController) {
         }
 
         FloatingActionButton(
-            onClick = {
-                navController.navigate(ShopHomeScreen.ConversationScreen.route)
-            },
+            onClick = onNewChat,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(16.dp)
@@ -121,10 +122,8 @@ fun ChatListScreen(navController: NavController) {
                 contentDescription = "Add Chat",
                 modifier = Modifier.size(24.dp)
             )
-
         }
     }
-    
 }
 
 @Composable
